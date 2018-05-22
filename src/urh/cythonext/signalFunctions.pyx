@@ -141,6 +141,29 @@ cpdef np.ndarray[np.complex64_t, ndim=1] modulate_psk(unsigned char[:] bit_array
     return result
 
 
+cpdef np.ndarray[np.complex64_t, ndim=1] modulate_qpsk(unsigned char[:] bit_array,
+                                                      unsigned long pause, unsigned long start,
+                                                      double a, double f,
+                                                      double phi0, double phi1, double sample_rate,
+                                                      unsigned long samples_per_bit):
+    cdef long long i = 0, index = 0
+    cdef float t = 0, phi = 0, arg = 0
+    cdef long long total_samples = int(len(bit_array) * samples_per_bit + pause)
+
+    cdef np.ndarray[np.complex64_t, ndim=1] result = np.zeros(total_samples, dtype=np.complex64)
+
+    cdef long long loop_end = total_samples-pause
+    for i in prange(0, loop_end, nogil=True, schedule="static"):
+        index = <long long>(i/samples_per_bit)
+        phi = phi0 if bit_array[index] == 0 else phi1
+
+        t = (i+start) / sample_rate
+        arg = 2 * M_PI * f * t + phi
+        result[i] = a*(cos(arg) + imag_unit * sin(arg))
+
+    return result
+
+
 cdef np.ndarray[np.float64_t, ndim=1] gauss_fir(double sample_rate, unsigned long samples_per_bit,
                                                 double bt=.5, double filter_width=1.0):
     """

@@ -243,6 +243,7 @@ class SignalFrame(QFrame):
         self.ui.btnAutoDetect.setChecked(self.signal.auto_detect_on_modulation_changed)
         self.ui.cbModulationType.setCurrentIndex(self.signal.modulation_type)
         self.ui.btnAdvancedModulationSettings.setVisible(self.ui.cbModulationType.currentText() == "ASK")
+        # self.ui.stackedWidget_2.setVisible(self.ui.cbModulationType.currentText() == "PSK")
 
         self.ui.spinBoxTolerance.blockSignals(False)
         self.ui.spinBoxCenterOffset.blockSignals(False)
@@ -685,6 +686,7 @@ class SignalFrame(QFrame):
 
         if self.ui.cbSignalView.currentText().lower() == "spectrogram":
             self.ui.stackedWidget.setCurrentWidget(self.ui.pageSpectrogram)
+            self.ui.stackedWidget_2.setCurrentWidget(self.ui.pageSpectrogram)
             self.draw_spectrogram(show_full_scene=True)
             self.__set_selected_bandwidth()
         else:

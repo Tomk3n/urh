@@ -19,9 +19,10 @@ class Modulator(object):
     Very useful in generation phase.
     """
 
-    MODULATION_TYPES = ["ASK", "FSK", "PSK", "GFSK"]
+    MODULATION_TYPES = ["ASK", "FSK", "PSK", "QPSK", "GFSK"]
     MODULATION_TYPES_VERBOSE = ["Amplitude Shift Keying (ASK)", "Frequency Shift Keying (FSK)",
-                                "Phase Shift Keying (PSK)", "Gaussian Frequeny Shift Keying (GFSK)"]
+                                "Phase Shift Keying (PSK)", "Quad Phase Shift Keying (PSK)",
+                                "Gaussian Frequeny Shift Keying (GFSK)"]
 
     def __init__(self, name: str):
         self.carrier_freq_hz = 40 * 10 ** 3
@@ -103,13 +104,13 @@ class Modulator(object):
     @property
     def param_for_zero_str(self):
         mod = self.MODULATION_TYPES[self.modulation_type]
-        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°"}
+        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°", "QPSK": "°"}
         return self.get_value_with_suffix(self.param_for_zero, units[mod])
 
     @property
     def param_for_one_str(self):
         mod = self.MODULATION_TYPES[self.modulation_type]
-        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°"}
+        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°", "QPSK": "°"}
         return self.get_value_with_suffix(self.param_for_one, units[mod])
 
     @property
@@ -179,6 +180,13 @@ class Modulator(object):
             phi0 = self.param_for_zero * (np.pi / 180)
             phi1 = self.param_for_one * (np.pi / 180)
             result = signalFunctions.modulate_psk(data, pause, start, self.carrier_amplitude,
+                                                  self.carrier_freq_hz,
+                                                  phi0, phi1, self.sample_rate,
+                                                  self.samples_per_bit)
+        elif mod_type == "QPSK":
+            phi0 = self.param_for_zero * (np.pi / 180)
+            phi1 = self.param_for_one * (np.pi / 180)
+            result = signalFunctions.modulate_qpsk(data, pause, start, self.carrier_amplitude,
                                                   self.carrier_freq_hz,
                                                   phi0, phi1, self.sample_rate,
                                                   self.samples_per_bit)
