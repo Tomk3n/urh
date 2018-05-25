@@ -324,8 +324,10 @@ class MainController(QMainWindow):
         sig_frame.refresh(draw_full_signal=True)  # protocol is derived here
         if self.project_manager.read_participants_for_signal(signal, pa.messages):
             sig_frame.ui.gvSignal.redraw_view()
+            sig_frame.ui.gvSignal_2.redraw_view()
 
         sig_frame.ui.gvSignal.auto_fit_view()
+        sig_frame.ui.gvSignal_2.auto_fit_view()
         self.set_frame_numbers()
 
         self.compare_frame_controller.filter_search_results()

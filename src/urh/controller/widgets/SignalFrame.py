@@ -60,12 +60,14 @@ class SignalFrame(QFrame):
 
         self.__set_spectrogram_adjust_widgets_visibility()
         self.ui.gvSignal.init_undo_stack(self.undo_stack)
+        self.ui.gvSignal_2.init_undo_stack(self.undo_stack)
 
         self.ui.txtEdProto.setFont(util.get_monospace_font())
         self.ui.txtEdProto.participants = project_manager.participants
         self.ui.txtEdProto.messages = proto_analyzer.messages
 
         self.ui.gvSignal.participants = project_manager.participants
+        self.ui.gvSignal_2.participants = project_manager.participants
 
         self.filter_abort_wanted = False
 
@@ -76,6 +78,8 @@ class SignalFrame(QFrame):
         self.signal = proto_analyzer.signal if self.proto_analyzer is not None else None  # type: Signal
         self.ui.gvSignal.protocol = self.proto_analyzer
         self.ui.gvSignal.set_signal(self.signal)
+        self.ui.gvSignal_2.protocol = self.proto_analyzer
+        self.ui.gvSignal_2.set_signal(self.signal)
         self.ui.sliderFFTWindowSize.setValue(int(math.log2(Spectrogram.DEFAULT_FFT_WINDOW_SIZE)))
         self.ui.sliderSpectrogramMin.setValue(self.ui.gvSpectrogram.scene_manager.spectrogram.data_min)
         self.ui.sliderSpectrogramMax.setValue(self.ui.gvSpectrogram.scene_manager.spectrogram.data_max)
@@ -124,6 +128,8 @@ class SignalFrame(QFrame):
             self.scene_manager = SignalSceneManager(self.signal, self)
             self.ui.gvSignal.scene_manager = self.scene_manager
             self.ui.gvSignal.setScene(self.scene_manager.scene)
+            self.ui.gvSignal_2.scene_manager = self.scene_manager
+            self.ui.gvSignal_2.setScene(self.scene_manager.scene)
 
             self.jump_sync = True
             self.on_btn_show_hide_start_end_clicked()
@@ -182,6 +188,9 @@ class SignalFrame(QFrame):
 
             self.ui.gvSignal.selection_width_changed.connect(self.start_proto_selection_timer)
             self.ui.gvSignal.sel_area_start_end_changed.connect(self.start_proto_selection_timer)
+            self.ui.gvSignal_2.selection_width_changed.connect(self.start_proto_selection_timer)
+            self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.start_proto_selection_timer)
+
             self.proto_selection_timer.timeout.connect(self.update_protocol_selection_from_roi)
             self.spectrogram_update_timer.timeout.connect(self.on_spectrogram_update_timer_timeout)
 
@@ -194,14 +203,26 @@ class SignalFrame(QFrame):
         self.ui.gvSignal.save_as_clicked.connect(self.save_signal_as)
         self.ui.gvSignal.export_demodulated_clicked.connect(self.export_demodulated)
 
+        self.ui.gvSignal_2.set_noise_clicked.connect(self.on_set_noise_in_graphic_view_clicked)
+        self.ui.gvSignal_2.save_as_clicked.connect(self.save_signal_as)
+        self.ui.gvSignal_2.export_demodulated_clicked.connect(self.export_demodulated)
+
         self.ui.gvSignal.create_clicked.connect(self.create_new_signal)
         self.ui.gvSignal.zoomed.connect(self.on_signal_zoomed)
+
+        self.ui.gvSignal_2.create_clicked.connect(self.create_new_signal)
+        self.ui.gvSignal_2.zoomed.connect(self.on_signal_zoomed)
+
         self.ui.gvSpectrogram.zoomed.connect(self.on_spectrum_zoomed)
         self.ui.gvSignal.sel_area_start_end_changed.connect(self.update_selection_area)
+        self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area)
+
         self.ui.gvSpectrogram.sel_area_start_end_changed.connect(self.update_selection_area)
         self.ui.gvSpectrogram.selection_height_changed.connect(self.update_number_selected_samples)
         self.ui.gvSignal.sep_area_changed.connect(self.set_qad_center)
         self.ui.gvSignal.sep_area_moving.connect(self.update_legend)
+        self.ui.gvSignal_2.sep_area_changed.connect(self.set_qad_center)
+        self.ui.gvSignal_2.sep_area_moving.connect(self.update_legend)
 
         self.ui.sliderYScale.valueChanged.connect(self.on_slider_y_scale_value_changed)
         self.ui.spinBoxXZoom.valueChanged.connect(self.on_spinbox_x_zoom_value_changed)
@@ -209,6 +230,7 @@ class SignalFrame(QFrame):
         self.project_manager.project_updated.connect(self.on_participant_changed)
         self.ui.txtEdProto.participant_changed.connect(self.on_participant_changed)
         self.ui.gvSignal.participant_changed.connect(self.on_participant_changed)
+        self.ui.gvSignal_2.participant_changed.connect(self.on_participant_changed)
 
         self.proto_selection_timer.timeout.connect(self.update_number_selected_samples)
 
@@ -271,10 +293,12 @@ class SignalFrame(QFrame):
             return
         else:
             self.ui.lNumSelectedSamples.setText(str(abs(int(self.ui.gvSignal.selection_area.length))))
+            self.ui.lNumSelectedSamples.setText(str(abs(int(self.ui.gvSignal_2.selection_area.length))))
             self.__set_duration()
 
         try:
             sel_messages = self.ui.gvSignal.selected_messages
+            sel_messages = self.ui.gvSignal_2.selected_messages
         except AttributeError:
             sel_messages = []
         if len(sel_messages) == 1:
@@ -442,8 +466,10 @@ class SignalFrame(QFrame):
         self.scene_manager.init_scene()
         if full_signal:
             self.ui.gvSignal.show_full_scene()
+            self.ui.gvSignal_2.show_full_scene()
         else:
             self.ui.gvSignal.redraw_view()
+            self.ui.gvSignal_2.redraw_view()
 
         legend = LegendScene()
         legend.setBackgroundBrush(constants.BGCOLOR)
@@ -453,6 +479,7 @@ class SignalFrame(QFrame):
         gv_legend.setScene(legend)
 
         self.ui.gvSignal.y_sep = -self.signal.qad_center
+        self.ui.gvSignal_2.y_sep = -self.signal.qad_center
 
     def restore_protocol_selection(self, sel_start, sel_end, start_message, end_message, old_protoview):
         if old_protoview == self.proto_view:
@@ -586,9 +613,11 @@ class SignalFrame(QFrame):
             self.signal.eliminate()
             self.proto_analyzer.eliminate()
             self.ui.gvSignal.scene_manager.eliminate()
+            self.ui.gvSignal_2.scene_manager.eliminate()
 
         self.ui.gvLegend.eliminate()
         self.ui.gvSignal.eliminate()
+        self.ui.gvSignal_2.eliminate()
         self.ui.gvSpectrogram.eliminate()
 
         self.scene_manager = None
