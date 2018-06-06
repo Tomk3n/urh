@@ -41,6 +41,7 @@ class Ui_SignalFrame(object):
         self.cbModulationType.addItem("")
         self.cbModulationType.addItem("")
         self.cbModulationType.addItem("")
+        self.cbModulationType.addItem("")
         self.horizontalLayout_5.addWidget(self.cbModulationType)
         self.btnAdvancedModulationSettings = QtWidgets.QToolButton(SignalFrame)
         icon = QtGui.QIcon.fromTheme("configure")
@@ -600,10 +601,11 @@ class Ui_SignalFrame(object):
     def retranslateUi(self, SignalFrame):
         _translate = QtCore.QCoreApplication.translate
         SignalFrame.setWindowTitle(_translate("SignalFrame", "Frame"))
-        self.cbModulationType.setToolTip(_translate("SignalFrame", "<html><head/><body><p>Choose signals modulation:</p><ul><li>Amplitude Shift Keying (ASK)</li><li>Frequency Shift Keying (FSK)</li><li>Phase Shift Keying (PSK)</li></ul></body></html>"))
+        self.cbModulationType.setToolTip(_translate("SignalFrame", "<html><head/><body><p>Choose signals modulation:</p><ul><li>Amplitude Shift Keying (ASK)</li><li>Frequency Shift Keying (FSK)</li><li>Phase Shift Keying (PSK)</li><li>Orthogonal Quad Phase Shift Keying (OQPSK)</li></ul></body></html>"))
         self.cbModulationType.setItemText(0, _translate("SignalFrame", "ASK"))
         self.cbModulationType.setItemText(1, _translate("SignalFrame", "FSK"))
         self.cbModulationType.setItemText(2, _translate("SignalFrame", "PSK"))
+        self.cbModulationType.setItemText(3, _translate("SignalFrame", "OQPSK"))
         self.btnAdvancedModulationSettings.setText(_translate("SignalFrame", "..."))
         self.labelModulation.setText(_translate("SignalFrame", "Modulation:"))
         self.chkBoxSyncSelection.setToolTip(_translate("SignalFrame", "If this is set to true, your selected protocol bits will show up in the signal view, and vice versa."))

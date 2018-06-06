@@ -115,6 +115,7 @@ class SignalFrame(QFrame):
                 self.ui.lSignalTyp.setText("Complex Signal")
 
             self.ui.gvLegend.hide()
+            self.ui.gvLegend_2.hide()
             self.ui.lineEditSignalName.setText(self.signal.name)
             self.ui.lSamplesInView.setText("{0:,}".format(self.signal.num_samples))
             self.ui.lSamplesTotal.setText("{0:,}".format(self.signal.num_samples))
@@ -185,6 +186,7 @@ class SignalFrame(QFrame):
             self.ui.btnSaveSignal.clicked.connect(self.save_signal)
             self.signal.name_changed.connect(self.ui.lineEditSignalName.setText)
             self.ui.gvLegend.resized.connect(self.on_gv_legend_resized)
+            self.ui.gvLegend_2.resized.connect(self.on_gv_legend_resized)
 
             self.ui.gvSignal.selection_width_changed.connect(self.start_proto_selection_timer)
             self.ui.gvSignal.sel_area_start_end_changed.connect(self.start_proto_selection_timer)
@@ -461,6 +463,8 @@ class SignalFrame(QFrame):
     def draw_signal(self, full_signal=False):
         gv_legend = self.ui.gvLegend
         gv_legend.y_sep = -self.signal.qad_center
+        gv_legend_2 = self.ui.gvLegend_2
+        gv_legend_2.y_sep = -self.signal.qad_center
 
         self.scene_manager.scene_type = self.ui.cbSignalView.currentIndex()
         self.scene_manager.init_scene()
@@ -616,6 +620,7 @@ class SignalFrame(QFrame):
             self.ui.gvSignal_2.scene_manager.eliminate()
 
         self.ui.gvLegend.eliminate()
+        self.ui.gvLegend_2.eliminate()
         self.ui.gvSignal.eliminate()
         self.ui.gvSignal_2.eliminate()
         self.ui.gvSpectrogram.eliminate()
@@ -708,6 +713,9 @@ class SignalFrame(QFrame):
         if self.ui.gvLegend.isVisible():
             self.ui.gvLegend.y_sep = y_sep
             self.ui.gvLegend.refresh()
+        if self.ui.gvLegend_2.isVisible():
+            self.ui.gvLegend_2.y_sep = y_sep
+            self.ui.gvLegend_2.refresh()
         self.ui.spinBoxCenterOffset.blockSignals(True)
         self.ui.spinBoxCenterOffset.setValue(-y_sep)
         self.ui.spinBoxCenterOffset.blockSignals(False)
@@ -751,8 +759,12 @@ class SignalFrame(QFrame):
                 self.ui.gvLegend.y_scene = self.scene_manager.scene.sceneRect().y()
                 self.ui.gvLegend.scene_height = self.scene_manager.scene.sceneRect().height()
                 self.ui.gvLegend.refresh()
+                self.ui.gvLegend_2.y_scene = self.scene_manager.scene.sceneRect().y()
+                self.ui.gvLegend_2.scene_height = self.scene_manager.scene.sceneRect().height()
+                self.ui.gvLegend_2.refresh()
             else:
                 self.ui.gvLegend.hide()
+                self.ui.gvLegend_2.hide()
 
             self.ui.gvSignal.auto_fit_view()
             self.ui.gvSignal.refresh_selection_area()

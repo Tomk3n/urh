@@ -91,7 +91,7 @@
        <item>
         <widget class="QComboBox" name="cbModulationType">
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose signals modulation:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Amplitude Shift Keying (ASK)&lt;/li&gt;&lt;li&gt;Frequency Shift Keying (FSK)&lt;/li&gt;&lt;li&gt;Phase Shift Keying (PSK)&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose signals modulation:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Amplitude Shift Keying (ASK)&lt;/li&gt;&lt;li&gt;Frequency Shift Keying (FSK)&lt;/li&gt;&lt;li&gt;Phase Shift Keying (PSK)&lt;/li&gt;&lt;li&gt;Orthogonal Quad Phase Shift Keying (OQPSK)&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <item>
           <property name="text">
@@ -106,6 +106,11 @@
          <item>
           <property name="text">
            <string>PSK</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>OQPSK</string>
           </property>
          </item>
         </widget>
