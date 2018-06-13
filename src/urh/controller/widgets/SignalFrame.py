@@ -98,6 +98,7 @@ class SignalFrame(QFrame):
 
         # Disabled because never used (see also set_protocol_visibilty())
         self.ui.chkBoxSyncSelection.hide()
+        self.ui.stackedWidget_2.hide()
 
         if self.signal is not None:
             self.filter_menu = QMenu()
@@ -346,6 +347,13 @@ class SignalFrame(QFrame):
             gv.scale(1, yscale / current_factor)
             x, w = gv.view_rect().x(), gv.view_rect().width()
             gv.centerOn(x + w / 2, gv.y_center)
+
+            if self.ui.stackedWidget_2.isVisible():
+                gv_2 = self.ui.gvSignal_2 if self.ui.stackedWidget_2.currentIndex() == 0 else self.ui.gvSpectrogram2
+                current_factor = gv_2.sceneRect().height() / gv_2.view_rect().height()
+                gv_2.scale(1, yscale / current_factor)
+                x, w = gv_2.view_rect().x(), gv_2.view_rect().width()
+                gv_2.centerOn(x + w / 2, gv.y_center)
         except ZeroDivisionError:
             pass
 
@@ -480,6 +488,13 @@ class SignalFrame(QFrame):
                             self.scene_manager.scene.sceneRect().height())
         legend.draw_one_zero_arrows(-self.signal.qad_center)
         gv_legend.setScene(legend)
+
+        legend_2 = LegendScene()
+        legend_2.setBackgroundBrush(constants.BGCOLOR)
+        legend_2.setSceneRect(0, self.scene_manager.scene.sceneRect().y(), gv_legend_2.width(),
+                            self.scene_manager.scene.sceneRect().height())
+        legend_2.draw_one_zero_arrows(-self.signal.qad_center)
+        gv_legend_2.setScene(legend_2)
 
         self.ui.gvSignal.y_sep = -self.signal.qad_center
         self.ui.gvSignal_2.y_sep = -self.signal.qad_center
