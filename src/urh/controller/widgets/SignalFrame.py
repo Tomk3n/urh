@@ -270,7 +270,6 @@ class SignalFrame(QFrame):
         self.ui.btnAutoDetect.setChecked(self.signal.auto_detect_on_modulation_changed)
         self.ui.cbModulationType.setCurrentIndex(self.signal.modulation_type)
         self.ui.btnAdvancedModulationSettings.setVisible(self.ui.cbModulationType.currentText() == "ASK")
-        # self.ui.stackedWidget_2.setVisible(self.ui.cbModulationType.currentText() == "PSK")
 
         self.ui.spinBoxTolerance.blockSignals(False)
         self.ui.spinBoxCenterOffset.blockSignals(False)
@@ -747,11 +746,13 @@ class SignalFrame(QFrame):
 
         if self.ui.cbSignalView.currentText().lower() == "spectrogram":
             self.ui.stackedWidget.setCurrentWidget(self.ui.pageSpectrogram)
-            self.ui.stackedWidget_2.setCurrentWidget(self.ui.pageSpectrogram)
+            self.ui.stackedWidget_2.hide()
+
             self.draw_spectrogram(show_full_scene=True)
             self.__set_selected_bandwidth()
         else:
             self.ui.stackedWidget.setCurrentWidget(self.ui.pageSignal)
+            self.ui.stackedWidget_2.hide()
             self.ui.gvSignal.scene_type = self.ui.cbSignalView.currentIndex()
             self.ui.gvSignal.redraw_view(reinitialize=True)
 
@@ -759,15 +760,29 @@ class SignalFrame(QFrame):
                 self.ui.gvLegend.y_scene = self.scene_manager.scene.sceneRect().y()
                 self.ui.gvLegend.scene_height = self.scene_manager.scene.sceneRect().height()
                 self.ui.gvLegend.refresh()
+            else:
+                self.ui.gvLegend.hide()
+
+            self.ui.gvSignal.auto_fit_view()
+            self.ui.gvSignal.refresh_selection_area()
+            self.on_slider_y_scale_value_changed()  # apply YScale to new view
+            self.__set_samples_in_view()
+            self.__set_duration()
+        if self.ui.cbSignalView.currentText().lower() == "demodulated" and self.ui.cbModulationType.currentText().lower() == "oqpsk":
+            self.ui.stackedWidget_2.setCurrentWidget(self.ui.pageSignal_2)
+            self.ui.stackedWidget_2.show()
+            self.ui.gvSignal_2.scene_type = self.ui.cbSignalView.currentIndex()
+            self.ui.gvSignal_2.redraw_view(reinitialize=True)
+
+            if self.ui.cbSignalView.currentIndex() == 1:
                 self.ui.gvLegend_2.y_scene = self.scene_manager.scene.sceneRect().y()
                 self.ui.gvLegend_2.scene_height = self.scene_manager.scene.sceneRect().height()
                 self.ui.gvLegend_2.refresh()
             else:
-                self.ui.gvLegend.hide()
                 self.ui.gvLegend_2.hide()
 
-            self.ui.gvSignal.auto_fit_view()
-            self.ui.gvSignal.refresh_selection_area()
+            self.ui.gvSignal_2.auto_fit_view()
+            self.ui.gvSignal_2.refresh_selection_area()
             self.on_slider_y_scale_value_changed()  # apply YScale to new view
             self.__set_samples_in_view()
             self.__set_duration()
@@ -1022,10 +1037,13 @@ class SignalFrame(QFrame):
     def on_signal_qad_center_changed(self, qad_center):
         self.ui.gvSignal.y_sep = -qad_center
         self.ui.gvLegend.y_sep = -qad_center
+        self.ui.gvSignal_2.y_sep = -qad_center
+        self.ui.gvLegend_2.y_sep = -qad_center
 
         if self.ui.cbSignalView.currentIndex() > 0:
             self.scene_manager.scene.draw_sep_area(-qad_center)
             self.ui.gvLegend.refresh()
+            self.ui.gvLegend_2.refresh()
         self.ui.spinBoxCenterOffset.blockSignals(False)
         self.ui.spinBoxCenterOffset.setValue(qad_center)
 
@@ -1104,6 +1122,8 @@ class SignalFrame(QFrame):
                                                       parameter_name="modulation_type",
                                                       parameter_value=index)
 
+            self.on_cb_signal_view_index_changed()
+
             self.undo_stack.push(modulation_action)
 
         self.ui.btnAdvancedModulationSettings.setVisible(self.ui.cbModulationType.currentText() == "ASK")
@@ -1125,6 +1145,10 @@ class SignalFrame(QFrame):
             self.ui.gvLegend.y_zoom_factor = self.ui.gvSignal.transform().m22()
             self.ui.gvLegend.refresh()
             self.ui.gvLegend.translate(0, 1)  # Resize verschiebt sonst Pfeile
+        if self.ui.gvLegend_2.isVisible():
+            self.ui.gvLegend_2.y_zoom_factor = self.ui.gvSignal.transform().m22()
+            self.ui.gvLegend_2.refresh()
+            self.ui.gvLegend_2.translate(0, 1)  # Resize verschiebt sonst Pfeile
 
     @pyqtSlot()
     def on_btn_show_hide_start_end_clicked(self):
