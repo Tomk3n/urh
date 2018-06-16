@@ -306,20 +306,33 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 
     return np.asarray(result)
 
-cpdef np.ndarray[np.float32_t, ndim=1] oqpsk_demod(float complex[::1] samples, float noise_mag):
+cpdef np.ndarray[np.float32_t, ndim=1] oqpsk_demod(float complex[::1] samples):
     if len(samples) <= 2:
         return np.zeros(len(samples), dtype=np.float32)
 
     cdef long long ns = len(samples)
     cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
-
-    # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
-    # noise_sqrd = noise_mag * noise_mag
-    # NOISE = get_noise_for_mod_type(1)
-    # result[0] = NOISE
+    cdef float f, t_part, t_all, offset
 
     for i in ns:
-        result=np.sign(np.real(samples[i]))+1j*np.sign(np.imag(samples[i]))
+
+        z_in = [i * cos(2*M_PI*f*t_part) in samples]
+
+        z_in_intg = (np.trapz(t_part, z_in))*(2/t_all)
+        if z_in_intg > 0:
+            rx_in_data = 1
+        else:
+            rx_in_data = 0
+
+        z_qd = [i * sin(2*M_PI*f*t_part) in samples]
+
+        z_qd_intg=(np.trapz(t_part, z_qd))*(2/t_all) + offset
+        if z_qd_intg>0:
+            rx_qd_data=1
+        else:
+            rx_qd_data=0
+
+        result.append([rx_in_data, rx_qd_data])
 
     return np.asarray(result)
 
