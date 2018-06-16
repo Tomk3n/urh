@@ -19,10 +19,10 @@ class Modulator(object):
     Very useful in generation phase.
     """
 
-    MODULATION_TYPES = ["ASK", "FSK", "PSK", "QPSK", "GFSK"]
+    MODULATION_TYPES = ["ASK", "FSK", "PSK", "GFSK", "OQPSK"]
     MODULATION_TYPES_VERBOSE = ["Amplitude Shift Keying (ASK)", "Frequency Shift Keying (FSK)",
-                                "Phase Shift Keying (PSK)", "Quad Phase Shift Keying (PSK)",
-                                "Gaussian Frequeny Shift Keying (GFSK)"]
+                                "Phase Shift Keying (PSK)", "Gaussian Frequeny Shift Keying (GFSK)",
+                                "Orthogonal Quad Phase Shift Keying (OQPSK)"]
 
     def __init__(self, name: str):
         self.carrier_freq_hz = 40 * 10 ** 3

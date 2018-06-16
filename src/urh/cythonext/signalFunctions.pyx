@@ -310,14 +310,15 @@ cpdef np.ndarray[np.float32_t, ndim=1] oqpsk_demod(float complex[::1] samples, f
     if len(samples) <= 2:
         return np.zeros(len(samples), dtype=np.float32)
 
+    cdef long long ns = len(samples)
     cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
 
     # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
-    noise_sqrd = noise_mag * noise_mag
-    NOISE = get_noise_for_mod_type(1)
-    result[0] = NOISE
+    # noise_sqrd = noise_mag * noise_mag
+    # NOISE = get_noise_for_mod_type(1)
+    # result[0] = NOISE
 
-    for i in len(samples):
+    for i in ns:
         result=np.sign(np.real(samples[i]))+1j*np.sign(np.imag(samples[i]))
 
     return np.asarray(result)
