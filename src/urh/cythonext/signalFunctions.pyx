@@ -141,7 +141,7 @@ cpdef np.ndarray[np.complex64_t, ndim=1] modulate_psk(unsigned char[:] bit_array
     return result
 
 
-cpdef np.ndarray[np.complex64_t, ndim=1] modulate_qpsk(unsigned char[:] bit_array,
+cpdef np.ndarray[np.complex64_t, ndim=1] modulate_oqpsk(unsigned char[:] bit_array,
                                                       unsigned long pause, unsigned long start,
                                                       double a, double f,
                                                       double phi0, double phi1, double sample_rate,
@@ -305,6 +305,23 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
                 result[i] = atan2(tmp.imag, tmp.real)  # Freq
 
     return np.asarray(result)
+
+cpdef np.ndarray[np.float32_t, ndim=1] oqpsk_demod(float complex[::1] samples, float noise_mag):
+    if len(samples) <= 2:
+        return np.zeros(len(samples), dtype=np.float32)
+
+    cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
+
+    # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
+    noise_sqrd = noise_mag * noise_mag
+    NOISE = get_noise_for_mod_type(1)
+    result[0] = NOISE
+
+    for i in len(samples):
+        result=np.sign(np.real(samples[i]))+1j*np.sign(np.imag(samples[i]))
+
+    return np.asarray(result)
+
 
 cpdef unsigned long long find_signal_start(float[::1] demod_samples, int mod_type):
 
