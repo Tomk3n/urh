@@ -789,12 +789,9 @@ class SignalFrame(QFrame):
             self.ui.gvSignal_2.scene_type = self.ui.cbSignalView.currentIndex()
             self.ui.gvSignal_2.redraw_view(reinitialize=True)
 
-            if self.ui.cbSignalView.currentIndex() == 1:
-                self.ui.gvLegend_2.y_scene = self.scene_manager.scene.sceneRect().y()
-                self.ui.gvLegend_2.scene_height = self.scene_manager.scene.sceneRect().height()
-                self.ui.gvLegend_2.refresh()
-            else:
-                self.ui.gvLegend_2.hide()
+            self.ui.gvLegend_2.y_scene = self.scene_manager.scene.sceneRect().y()
+            self.ui.gvLegend_2.scene_height = self.scene_manager.scene.sceneRect().height()
+            self.ui.gvLegend_2.refresh()
 
             self.ui.gvSignal_2.auto_fit_view()
             self.ui.gvSignal_2.refresh_selection_area()
