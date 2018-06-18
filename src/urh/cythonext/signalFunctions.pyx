@@ -293,24 +293,23 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 
         if mod_type == 4:
             for i in ns:
+                z_in = [i * cos(2*M_PI*f*t_part) in samples]
 
-            z_in = [i * cos(2*M_PI*f*t_part) in samples]
+                z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
+                if z_in_intg > 0:
+                    rx_in_data = 1
+                else:
+                    rx_in_data = 0
 
-            z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
-            if z_in_intg > 0:
-                rx_in_data = 1
-            else:
-                rx_in_data = 0
+                z_qd = [i * sin(2*M_PI*f*t_part) in samples]
 
-            z_qd = [i * sin(2*M_PI*f*t_part) in samples]
+                z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
+                if z_qd_intg>0:
+                    rx_qd_data=1
+                else:
+                    rx_qd_data=0
 
-            z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
-            if z_qd_intg>0:
-                rx_qd_data=1
-            else:
-                rx_qd_data=0
-
-            result.append([rx_in_data, rx_qd_data])
+                result.append([rx_in_data, rx_qd_data])
 
     else:
         for i in prange(1, ns, nogil=True, schedule='static'):
