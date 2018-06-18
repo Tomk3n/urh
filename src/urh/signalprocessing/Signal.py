@@ -19,7 +19,7 @@ class Signal(QObject):
     Representation of a loaded signal (complex file).
     """
 
-    MODULATION_TYPES = ["ASK", "FSK", "PSK", "QAM"]
+    MODULATION_TYPES = ["ASK", "FSK", "PSK", "QAM", "OQPSK"]
 
     bit_len_changed = pyqtSignal(int)
     tolerance_changed = pyqtSignal(int)

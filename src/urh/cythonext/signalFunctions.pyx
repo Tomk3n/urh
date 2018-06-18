@@ -273,6 +273,8 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef complex nco_times_sample = 0
     cdef float magnitude = 0
 
+    cdef float f, t_part, t_all, offset
+
     # Atan2 liefert Werte im Bereich von -Pi bis Pi
     # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
     noise_sqrd = noise_mag * noise_mag
@@ -281,13 +283,34 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 
     cdef bool qam = False
 
-    if mod_type == 2 or mod_type == 3: # PSK or QAM
+    if mod_type > 1: # PSK, OQPSK or QAM
         if mod_type == 3:
             qam = True
 
         costa_alpha = calc_costa_alpha(<float>(2 * M_PI / 100))
         costa_beta = calc_costa_beta(<float>(2 * M_PI / 100))
         costa_demod(samples, result, noise_sqrd, costa_alpha, costa_beta, qam, ns)
+
+        if mod_type == 4:
+            for i in ns:
+
+            z_in = [i * cos(2*M_PI*f*t_part) in samples]
+
+            z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
+            if z_in_intg > 0:
+                rx_in_data = 1
+            else:
+                rx_in_data = 0
+
+            z_qd = [i * sin(2*M_PI*f*t_part) in samples]
+
+            z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
+            if z_qd_intg>0:
+                rx_qd_data=1
+            else:
+                rx_qd_data=0
+
+            result.append([rx_in_data, rx_qd_data])
 
     else:
         for i in prange(1, ns, nogil=True, schedule='static'):
@@ -305,37 +328,6 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
                 result[i] = atan2(tmp.imag, tmp.real)  # Freq
 
     return np.asarray(result)
-
-cpdef np.ndarray[np.float32_t, ndim=1] oqpsk_demod(float complex[::1] samples):
-    if len(samples) <= 2:
-        return np.zeros(len(samples), dtype=np.float32)
-
-    cdef long long ns = len(samples)
-    cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
-    cdef float f, t_part, t_all, offset
-
-    for i in ns:
-
-        z_in = [i * cos(2*M_PI*f*t_part) in samples]
-
-        z_in_intg = (np.trapz(t_part, z_in))*(2/t_all)
-        if z_in_intg > 0:
-            rx_in_data = 1
-        else:
-            rx_in_data = 0
-
-        z_qd = [i * sin(2*M_PI*f*t_part) in samples]
-
-        z_qd_intg=(np.trapz(t_part, z_qd))*(2/t_all) + offset
-        if z_qd_intg>0:
-            rx_qd_data=1
-        else:
-            rx_qd_data=0
-
-        result.append([rx_in_data, rx_qd_data])
-
-    return np.asarray(result)
-
 
 cpdef unsigned long long find_signal_start(float[::1] demod_samples, int mod_type):
 
