@@ -104,13 +104,13 @@ class Modulator(object):
     @property
     def param_for_zero_str(self):
         mod = self.MODULATION_TYPES[self.modulation_type]
-        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°", "QPSK": "°"}
+        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°", "OQPSK": "°"}
         return self.get_value_with_suffix(self.param_for_zero, units[mod])
 
     @property
     def param_for_one_str(self):
         mod = self.MODULATION_TYPES[self.modulation_type]
-        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°", "QPSK": "°"}
+        units = {"ASK": "%", "FSK": "Hz", "GFSK": "Hz", "PSK": "°", "OQPSK": "°"}
         return self.get_value_with_suffix(self.param_for_one, units[mod])
 
     @property
@@ -183,10 +183,10 @@ class Modulator(object):
                                                   self.carrier_freq_hz,
                                                   phi0, phi1, self.sample_rate,
                                                   self.samples_per_bit)
-        elif mod_type == "QPSK":
+        elif mod_type == "OQPSK":
             phi0 = self.param_for_zero * (np.pi / 180)
             phi1 = self.param_for_one * (np.pi / 180)
-            result = signalFunctions.modulate_qpsk(data, pause, start, self.carrier_amplitude,
+            result = signalFunctions.modulate_oqpsk(data, pause, start, self.carrier_amplitude,
                                                   self.carrier_freq_hz,
                                                   phi0, phi1, self.sample_rate,
                                                   self.samples_per_bit)
