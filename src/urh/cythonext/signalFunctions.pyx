@@ -147,7 +147,7 @@ cpdef np.ndarray[np.complex64_t, ndim=1] modulate_oqpsk(unsigned char[:] bit_arr
                                                       double phi0, double phi1, double sample_rate,
                                                       unsigned long samples_per_bit):
     cdef long long i = 0, index = 0
-    cdef float t = 0, phi = 0, arg = 0
+    cdef float t = 0, phi = 0, arg_i = 0, arg_q = 0
     cdef long long total_samples = int(len(bit_array) * samples_per_bit + pause)
 
     cdef np.ndarray[np.complex64_t, ndim=1] result = np.zeros(total_samples, dtype=np.complex64)
@@ -158,8 +158,9 @@ cpdef np.ndarray[np.complex64_t, ndim=1] modulate_oqpsk(unsigned char[:] bit_arr
         phi = phi0 if bit_array[index] == 0 else phi1
 
         t = (i+start) / sample_rate
-        arg = 2 * M_PI * f * t + phi
-        result[i] = a*(cos(arg) + imag_unit * sin(arg))
+        arg_i = 2 * M_PI * f * t + phi + (sample_rate/2)
+        arg_q = 2 * M_PI * f * t + phi
+        result[i] = a*(cos(arg_q) * sin(arg_i))
 
     return result
 
