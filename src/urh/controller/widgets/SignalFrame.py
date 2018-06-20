@@ -261,7 +261,7 @@ class SignalFrame(QFrame):
         self.ui.spinBoxSelectionStart.valueChanged.connect(self.on_spinbox_selection_start_value_changed)
         self.ui.spinBoxSelectionEnd.valueChanged.connect(self.on_spinbox_selection_end_value_changed)
         self.ui.spinBoxCenterOffset.editingFinished.connect(self.on_spinbox_center_editing_finished)
-        self.ui.spinBoxCenterOffset2.editingFinished.connect(self.on_spinbox_center_2_editing_finished)
+        self.ui.spinBoxCenter2Offset.editingFinished.connect(self.on_spinbox_center_2_editing_finished)
         self.ui.spinBoxTolerance.editingFinished.connect(self.on_spinbox_tolerance_editing_finished)
         self.ui.spinBoxNoiseTreshold.editingFinished.connect(self.on_spinbox_noise_threshold_editing_finished)
         self.ui.spinBoxInfoLen.editingFinished.connect(self.on_spinbox_infolen_editing_finished)
@@ -290,14 +290,14 @@ class SignalFrame(QFrame):
     def refresh_signal_information(self, block=True):
         self.ui.spinBoxTolerance.blockSignals(block)
         self.ui.spinBoxCenterOffset.blockSignals(block)
-        self.ui.spinBoxCenterOffset2.blockSignals(block)
+        self.ui.spinBoxCenter2Offset.blockSignals(block)
         self.ui.spinBoxInfoLen.blockSignals(block)
         self.ui.spinBoxNoiseTreshold.blockSignals(block)
         self.ui.btnAutoDetect.blockSignals(block)
 
         self.ui.spinBoxTolerance.setValue(self.signal.tolerance)
         self.ui.spinBoxCenterOffset.setValue(self.signal.qad_center)
-        self.ui.spinBoxCenterOffset2.setValue(self.signal.qad_2_center)
+        self.ui.spinBoxCenter2Offset.setValue(self.signal.qad_2_center)
         self.ui.spinBoxInfoLen.setValue(self.signal.bit_len)
         self.ui.spinBoxNoiseTreshold.setValue(self.signal.noise_threshold)
         self.ui.btnAutoDetect.setChecked(self.signal.auto_detect_on_modulation_changed)
@@ -306,7 +306,7 @@ class SignalFrame(QFrame):
 
         self.ui.spinBoxTolerance.blockSignals(False)
         self.ui.spinBoxCenterOffset.blockSignals(False)
-        self.ui.spinBoxCenterOffset2.blockSignals(False)
+        self.ui.spinBoxCenter2Offset.blockSignals(False)
         self.ui.spinBoxInfoLen.blockSignals(False)
         self.ui.spinBoxNoiseTreshold.blockSignals(False)
         self.ui.btnAutoDetect.blockSignals(False)
@@ -812,9 +812,9 @@ class SignalFrame(QFrame):
         if self.ui.gvLegend_2.isVisible():
             self.ui.gvLegend_2.y_sep = y_sep
             self.ui.gvLegend_2.refresh()
-        self.ui.spinBoxCenterOffset2.blockSignals(True)
-        self.ui.spinBoxCenterOffset2.setValue(-y_sep)
-        self.ui.spinBoxCenterOffset2.blockSignals(False)
+        self.ui.spinBoxCenter2Offset.blockSignals(True)
+        self.ui.spinBoxCenter2Offset.setValue(-y_sep)
+        self.ui.spinBoxCenter2Offset.blockSignals(False)
 
     @pyqtSlot()
     def handle_protocol_sync_changed(self):
@@ -939,8 +939,8 @@ class SignalFrame(QFrame):
 
     @pyqtSlot(float)
     def set_qad_2_center(self, th):
-        self.ui.spinBoxCenterOffset2.setValue(th)
-        self.ui.spinBoxCenterOffset2.editingFinished.emit()
+        self.ui.spinBoxCenter2Offset.setValue(th)
+        self.ui.spinBoxCenter2Offset.editingFinished.emit()
 
     def set_roi_from_protocol_analysis(self, start_message, start_pos, end_message, end_pos, view_type):
         if not self.proto_analyzer:
@@ -1160,8 +1160,8 @@ class SignalFrame(QFrame):
                 self.scene_manager_2.scene.draw_sep_area(-qad_2_center)
                 self.ui.gvLegend_2.refresh()
 
-            self.ui.spinBoxCenterOffset2.blockSignals(False)
-            self.ui.spinBoxCenterOffset2.setValue(qad_2_center)
+            self.ui.spinBoxCenter2Offset.blockSignals(False)
+            self.ui.spinBoxCenter2Offset.setValue(qad_2_center)
 
     def on_spinbox_noise_threshold_editing_finished(self):
         if self.signal is not None and self.signal.noise_threshold != self.ui.spinBoxNoiseTreshold.value():
@@ -1323,11 +1323,11 @@ class SignalFrame(QFrame):
 
     @pyqtSlot()
     def on_spinbox_center_2_editing_finished(self):
-        if self.signal.qad_2_center != self.ui.spinBoxCenterOffset2.value():
-            self.ui.spinBoxCenterOffset2.blockSignals(True)
+        if self.signal.qad_2_center != self.ui.spinBoxCenter2Offset.value():
+            self.ui.spinBoxCenter2Offset.blockSignals(True)
             center_action = ChangeSignalParameter(signal=self.signal, protocol=self.proto_analyzer,
                                                   parameter_name="qad_2_center",
-                                                  parameter_value=self.ui.spinBoxCenterOffset2.value())
+                                                  parameter_value=self.ui.spinBoxCenter2Offset.value())
             self.undo_stack.push(center_action)
             self.disable_auto_detection()
 
