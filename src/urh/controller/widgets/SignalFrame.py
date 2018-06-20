@@ -6,7 +6,7 @@ import numpy as np
 from PyQt5.QtCore import pyqtSignal, QPoint, Qt, QMimeData, pyqtSlot, QTimer
 from PyQt5.QtGui import QFontDatabase, QIcon, QDrag, QPixmap, QRegion, QDropEvent, QTextCursor, QContextMenuEvent, \
     QResizeEvent
-from PyQt5.QtWidgets import QFrame, QMessageBox, QMenu, QWidget, QUndoStack, QCheckBox, QApplication
+from PyQt5.QtWidgets import QFrame, QMessageBox, QMenu, QWidget, QUndoStack, QCheckBox, QApplication, QScrollBar
 
 from urh import constants
 from urh.controller.dialogs.AdvancedModulationOptionsDialog import AdvancedModulationOptionsDialog
@@ -44,6 +44,7 @@ class SignalFrame(QFrame):
     apply_to_all_clicked = pyqtSignal(Signal)
     sort_action_clicked = pyqtSignal()
 
+
     @property
     def proto_view(self):
         return self.ui.txtEdProto.cur_view
@@ -52,6 +53,7 @@ class SignalFrame(QFrame):
         super().__init__(parent)
 
         self.undo_stack = undo_stack
+        self.is_updating_selection = False
 
         self.ui = Ui_SignalFrame()
         self.ui.setupUi(self)
@@ -60,14 +62,12 @@ class SignalFrame(QFrame):
 
         self.__set_spectrogram_adjust_widgets_visibility()
         self.ui.gvSignal.init_undo_stack(self.undo_stack)
-        self.ui.gvSignal_2.init_undo_stack(self.undo_stack)
 
         self.ui.txtEdProto.setFont(util.get_monospace_font())
         self.ui.txtEdProto.participants = project_manager.participants
         self.ui.txtEdProto.messages = proto_analyzer.messages
 
         self.ui.gvSignal.participants = project_manager.participants
-        self.ui.gvSignal_2.participants = project_manager.participants
 
         self.filter_abort_wanted = False
 
@@ -78,8 +78,6 @@ class SignalFrame(QFrame):
         self.signal = proto_analyzer.signal if self.proto_analyzer is not None else None  # type: Signal
         self.ui.gvSignal.protocol = self.proto_analyzer
         self.ui.gvSignal.set_signal(self.signal)
-        self.ui.gvSignal_2.protocol = self.proto_analyzer
-        self.ui.gvSignal_2.set_signal(self.signal)
         self.ui.sliderFFTWindowSize.setValue(int(math.log2(Spectrogram.DEFAULT_FFT_WINDOW_SIZE)))
         self.ui.sliderSpectrogramMin.setValue(self.ui.gvSpectrogram.scene_manager.spectrogram.data_min)
         self.ui.sliderSpectrogramMax.setValue(self.ui.gvSpectrogram.scene_manager.spectrogram.data_max)
@@ -99,6 +97,8 @@ class SignalFrame(QFrame):
         # Disabled because never used (see also set_protocol_visibilty())
         self.ui.chkBoxSyncSelection.hide()
         self.ui.stackedWidget_2.hide()
+
+        self.is_showing_2nd_signal = False
 
         if self.signal is not None:
             self.filter_menu = QMenu()
@@ -130,8 +130,6 @@ class SignalFrame(QFrame):
             self.scene_manager = SignalSceneManager(self.signal, self)
             self.ui.gvSignal.scene_manager = self.scene_manager
             self.ui.gvSignal.setScene(self.scene_manager.scene)
-            self.ui.gvSignal_2.scene_manager = self.scene_manager
-            self.ui.gvSignal_2.setScene(self.scene_manager.scene)
 
             self.jump_sync = True
             self.on_btn_show_hide_start_end_clicked()
@@ -146,10 +144,31 @@ class SignalFrame(QFrame):
 
             self.show_protocol(refresh=False)
 
+            # prepare 2nd signal
+            self.scene_manager_2 = None
+
+
         else:
             self.ui.lSignalTyp.setText("Protocol")
             self.set_empty_frame_visibilities()
             self.create_connects()
+
+    def init_2nd_signal(self):
+        if self.signal is not None:
+            self.ui.stackedWidget_2.setCurrentWidget(self.ui.pageSignal_2)
+
+            self.ui.gvSignal_2.init_undo_stack(self.undo_stack)
+            self.ui.gvSignal_2.participants = self.project_manager.participants
+            self.ui.gvSignal_2.scene_type = 2
+
+            self.ui.gvSignal_2.protocol = self.proto_analyzer
+            self.ui.gvSignal_2.set_signal(self.signal)
+
+            self.scene_manager_2 = SignalSceneManager(self.signal, self, 2)
+            self.ui.gvSignal_2.scene_manager = self.scene_manager_2
+            self.ui.gvSignal_2.setScene(self.scene_manager_2.scene)
+
+        self.create_connects_2nd_signal()
 
     @property
     def spectrogram_is_active(self) -> bool:
@@ -175,8 +194,9 @@ class SignalFrame(QFrame):
 
             self.signal.bit_len_changed.connect(self.ui.spinBoxInfoLen.setValue)
             self.signal.qad_center_changed.connect(self.on_signal_qad_center_changed)
+            self.signal.qad_2_center_changed.connect(self.on_signal_qad_2_center_changed)
             self.signal.noise_threshold_changed.connect(self.on_noise_threshold_changed)
-            self.signal.modulation_type_changed.connect(self.ui.cbModulationType.setCurrentIndex)
+            self.signal.modulation_type_changed.connect(self.on_modulation_type_changed)
             self.signal.tolerance_changed.connect(self.ui.spinBoxTolerance.setValue)
             self.signal.protocol_needs_update.connect(self.refresh_protocol)
             self.signal.data_edited.connect(self.on_signal_data_edited)  # Crop/Delete Mute etc.
@@ -187,12 +207,9 @@ class SignalFrame(QFrame):
             self.ui.btnSaveSignal.clicked.connect(self.save_signal)
             self.signal.name_changed.connect(self.ui.lineEditSignalName.setText)
             self.ui.gvLegend.resized.connect(self.on_gv_legend_resized)
-            self.ui.gvLegend_2.resized.connect(self.on_gv_legend_resized)
 
             self.ui.gvSignal.selection_width_changed.connect(self.start_proto_selection_timer)
             self.ui.gvSignal.sel_area_start_end_changed.connect(self.start_proto_selection_timer)
-            self.ui.gvSignal_2.selection_width_changed.connect(self.start_proto_selection_timer)
-            self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.start_proto_selection_timer)
 
             self.proto_selection_timer.timeout.connect(self.update_protocol_selection_from_roi)
             self.spectrogram_update_timer.timeout.connect(self.on_spectrogram_update_timer_timeout)
@@ -206,26 +223,18 @@ class SignalFrame(QFrame):
         self.ui.gvSignal.save_as_clicked.connect(self.save_signal_as)
         self.ui.gvSignal.export_demodulated_clicked.connect(self.export_demodulated)
 
-        self.ui.gvSignal_2.set_noise_clicked.connect(self.on_set_noise_in_graphic_view_clicked)
-        self.ui.gvSignal_2.save_as_clicked.connect(self.save_signal_as)
-        self.ui.gvSignal_2.export_demodulated_clicked.connect(self.export_demodulated)
-
         self.ui.gvSignal.create_clicked.connect(self.create_new_signal)
         self.ui.gvSignal.zoomed.connect(self.on_signal_zoomed)
 
-        self.ui.gvSignal_2.create_clicked.connect(self.create_new_signal)
-        self.ui.gvSignal_2.zoomed.connect(self.on_signal_zoomed)
+        self.ui.gvSignal.horizontalScrollBar().valueChanged.connect(self.on_signal_scrolled)
 
         self.ui.gvSpectrogram.zoomed.connect(self.on_spectrum_zoomed)
-        self.ui.gvSignal.sel_area_start_end_changed.connect(self.update_selection_area)
-        self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area)
+        self.ui.gvSignal.sel_area_start_end_changed.connect(self.update_selection_area_1)
 
         self.ui.gvSpectrogram.sel_area_start_end_changed.connect(self.update_selection_area)
         self.ui.gvSpectrogram.selection_height_changed.connect(self.update_number_selected_samples)
         self.ui.gvSignal.sep_area_changed.connect(self.set_qad_center)
         self.ui.gvSignal.sep_area_moving.connect(self.update_legend)
-        self.ui.gvSignal_2.sep_area_changed.connect(self.set_qad_center)
-        self.ui.gvSignal_2.sep_area_moving.connect(self.update_legend)
 
         self.ui.sliderYScale.valueChanged.connect(self.on_slider_y_scale_value_changed)
         self.ui.spinBoxXZoom.valueChanged.connect(self.on_spinbox_x_zoom_value_changed)
@@ -233,7 +242,6 @@ class SignalFrame(QFrame):
         self.project_manager.project_updated.connect(self.on_participant_changed)
         self.ui.txtEdProto.participant_changed.connect(self.on_participant_changed)
         self.ui.gvSignal.participant_changed.connect(self.on_participant_changed)
-        self.ui.gvSignal_2.participant_changed.connect(self.on_participant_changed)
 
         self.proto_selection_timer.timeout.connect(self.update_number_selected_samples)
 
@@ -253,19 +261,43 @@ class SignalFrame(QFrame):
         self.ui.spinBoxSelectionStart.valueChanged.connect(self.on_spinbox_selection_start_value_changed)
         self.ui.spinBoxSelectionEnd.valueChanged.connect(self.on_spinbox_selection_end_value_changed)
         self.ui.spinBoxCenterOffset.editingFinished.connect(self.on_spinbox_center_editing_finished)
+        self.ui.spinBoxCenter2Offset.editingFinished.connect(self.on_spinbox_center_2_editing_finished)
         self.ui.spinBoxTolerance.editingFinished.connect(self.on_spinbox_tolerance_editing_finished)
         self.ui.spinBoxNoiseTreshold.editingFinished.connect(self.on_spinbox_noise_threshold_editing_finished)
         self.ui.spinBoxInfoLen.editingFinished.connect(self.on_spinbox_infolen_editing_finished)
 
+    def create_connects_2nd_signal(self):
+        if self.signal is not None:
+            self.ui.gvLegend_2.resized.connect(self.on_gv_legend_resized_2)
+
+            self.ui.gvSignal_2.selection_width_changed.connect(self.start_proto_selection_timer)
+            self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.start_proto_selection_timer)
+
+            self.ui.gvSignal_2.set_noise_clicked.connect(self.on_set_noise_in_graphic_view_clicked)
+            self.ui.gvSignal_2.save_as_clicked.connect(self.save_signal_as)
+            self.ui.gvSignal_2.export_demodulated_clicked.connect(self.export_demodulated)
+
+            self.ui.gvSignal_2.create_clicked.connect(self.create_new_signal)
+            self.ui.gvSignal_2.zoomed.connect(self.on_signal_zoomed_2)
+            self.ui.gvSignal_2.horizontalScrollBar().valueChanged.connect(self.on_signal_scrolled_2)
+            self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area_2)
+
+        self.ui.gvSignal_2.sep_area_changed.connect(self.set_qad_2_center)
+        self.ui.gvSignal_2.sep_area_moving.connect(self.update_legend_2)
+
+        self.ui.gvSignal_2.participant_changed.connect(self.on_participant_changed)
+
     def refresh_signal_information(self, block=True):
         self.ui.spinBoxTolerance.blockSignals(block)
         self.ui.spinBoxCenterOffset.blockSignals(block)
+        self.ui.spinBoxCenter2Offset.blockSignals(block)
         self.ui.spinBoxInfoLen.blockSignals(block)
         self.ui.spinBoxNoiseTreshold.blockSignals(block)
         self.ui.btnAutoDetect.blockSignals(block)
 
         self.ui.spinBoxTolerance.setValue(self.signal.tolerance)
         self.ui.spinBoxCenterOffset.setValue(self.signal.qad_center)
+        self.ui.spinBoxCenter2Offset.setValue(self.signal.qad_2_center)
         self.ui.spinBoxInfoLen.setValue(self.signal.bit_len)
         self.ui.spinBoxNoiseTreshold.setValue(self.signal.noise_threshold)
         self.ui.btnAutoDetect.setChecked(self.signal.auto_detect_on_modulation_changed)
@@ -274,6 +306,7 @@ class SignalFrame(QFrame):
 
         self.ui.spinBoxTolerance.blockSignals(False)
         self.ui.spinBoxCenterOffset.blockSignals(False)
+        self.ui.spinBoxCenter2Offset.blockSignals(False)
         self.ui.spinBoxInfoLen.blockSignals(False)
         self.ui.spinBoxNoiseTreshold.blockSignals(False)
         self.ui.btnAutoDetect.blockSignals(False)
@@ -294,13 +327,12 @@ class SignalFrame(QFrame):
             self.__set_selected_bandwidth()
             return
         else:
+            # a 2nd signal should not affect the selected sample count
             self.ui.lNumSelectedSamples.setText(str(abs(int(self.ui.gvSignal.selection_area.length))))
-            self.ui.lNumSelectedSamples.setText(str(abs(int(self.ui.gvSignal_2.selection_area.length))))
             self.__set_duration()
 
         try:
             sel_messages = self.ui.gvSignal.selected_messages
-            sel_messages = self.ui.gvSignal_2.selected_messages
         except AttributeError:
             sel_messages = []
         if len(sel_messages) == 1:
@@ -348,8 +380,8 @@ class SignalFrame(QFrame):
             x, w = gv.view_rect().x(), gv.view_rect().width()
             gv.centerOn(x + w / 2, gv.y_center)
 
-            if self.ui.stackedWidget_2.isVisible():
-                gv_2 = self.ui.gvSignal_2 if self.ui.stackedWidget_2.currentIndex() == 0 else self.ui.gvSpectrogram2
+            if self.has_2nd_signal():
+                gv_2 = self.ui.gvSignal_2
                 current_factor = gv_2.sceneRect().height() / gv_2.view_rect().height()
                 gv_2.scale(1, yscale / current_factor)
                 x, w = gv_2.view_rect().x(), gv_2.view_rect().width()
@@ -470,17 +502,13 @@ class SignalFrame(QFrame):
     def draw_signal(self, full_signal=False):
         gv_legend = self.ui.gvLegend
         gv_legend.y_sep = -self.signal.qad_center
-        gv_legend_2 = self.ui.gvLegend_2
-        gv_legend_2.y_sep = -self.signal.qad_center
 
         self.scene_manager.scene_type = self.ui.cbSignalView.currentIndex()
         self.scene_manager.init_scene()
         if full_signal:
             self.ui.gvSignal.show_full_scene()
-            self.ui.gvSignal_2.show_full_scene()
         else:
             self.ui.gvSignal.redraw_view()
-            self.ui.gvSignal_2.redraw_view()
 
         legend = LegendScene()
         legend.setBackgroundBrush(constants.BGCOLOR)
@@ -489,15 +517,31 @@ class SignalFrame(QFrame):
         legend.draw_one_zero_arrows(-self.signal.qad_center)
         gv_legend.setScene(legend)
 
+        self.ui.gvSignal.y_sep = -self.signal.qad_center
+
+    def draw_2nd_signal(self, full_signal=False):
+        if not self.has_2nd_signal():
+            return
+
+        self.ui.gvLegend_2.y_sep = -self.signal.qad_2_center
+
+        self.scene_manager_2.init_scene()
+        if full_signal:
+            self.ui.gvSignal_2.show_full_scene()
+        else:
+            self.ui.gvSignal_2.redraw_view()
+
         legend_2 = LegendScene()
         legend_2.setBackgroundBrush(constants.BGCOLOR)
-        legend_2.setSceneRect(0, self.scene_manager.scene.sceneRect().y(), gv_legend_2.width(),
-                            self.scene_manager.scene.sceneRect().height())
-        legend_2.draw_one_zero_arrows(-self.signal.qad_center)
-        gv_legend_2.setScene(legend_2)
 
-        self.ui.gvSignal.y_sep = -self.signal.qad_center
-        self.ui.gvSignal_2.y_sep = -self.signal.qad_center
+        # both scene_managers have different sceneRects, so we use the sceneRect of the 1st signal
+        # to ensure that scrolling is in sync (otherwise there is a slight offset)
+        legend_2.setSceneRect(0, self.scene_manager_2.scene.sceneRect().y(), self.ui.gvLegend_2.width(),
+                              self.scene_manager_2.scene.sceneRect().height())
+        legend_2.draw_one_zero_arrows(-self.signal.qad_2_center)
+        self.ui.gvLegend_2.setScene(legend_2)
+
+        self.ui.gvSignal_2.y_sep = -self.signal.qad_2_center
 
     def restore_protocol_selection(self, sel_start, sel_end, start_message, end_message, old_protoview):
         if old_protoview == self.proto_view:
@@ -631,7 +675,9 @@ class SignalFrame(QFrame):
             self.signal.eliminate()
             self.proto_analyzer.eliminate()
             self.ui.gvSignal.scene_manager.eliminate()
-            self.ui.gvSignal_2.scene_manager.eliminate()
+
+            if self.ui.gvSignal_2.scene_manager is not None:
+                self.ui.gvSignal_2.scene_manager.eliminate()
 
         self.ui.gvLegend.eliminate()
         self.ui.gvLegend_2.eliminate()
@@ -649,15 +695,38 @@ class SignalFrame(QFrame):
         self.setParent(None)
         self.deleteLater()
 
-    def __handle_graphic_view_zoomed(self, graphic_view):
+    def __handle_graphic_view_zoomed(self, graphic_view, other_graphic_view=None):
         self.ui.lSamplesInView.setText("{0:n}".format(int(graphic_view.view_rect().width())))
         self.ui.spinBoxXZoom.blockSignals(True)
         self.ui.spinBoxXZoom.setValue(int(graphic_view.sceneRect().width() / graphic_view.view_rect().width() * 100))
         self.ui.spinBoxXZoom.blockSignals(False)
 
+        if other_graphic_view is not None:
+            self.sync_scroll_position(graphic_view, other_graphic_view)
+            other_graphic_view.setTransform(graphic_view.transform())
+
+
     @pyqtSlot()
     def on_signal_zoomed(self):
-        self.__handle_graphic_view_zoomed(self.ui.gvSignal)
+        if self.has_2nd_signal():
+            self.__handle_graphic_view_zoomed(self.ui.gvSignal, self.ui.gvSignal_2)
+        else:
+            self.__handle_graphic_view_zoomed(self.ui.gvSignal, None)
+
+    @pyqtSlot()
+    def on_signal_zoomed_2(self):
+        self.__handle_graphic_view_zoomed(self.ui.gvSignal_2, self.ui.gvSignal)
+
+    @pyqtSlot()
+    def on_signal_scrolled(self):
+        # also scroll second signal to stay in sync
+        if self.has_2nd_signal():
+            self.sync_scroll_position(self.ui.gvSignal, self.ui.gvSignal_2)
+
+    @pyqtSlot()
+    def on_signal_scrolled_2(self):
+        # also scroll first signal to stay in sync
+        self.sync_scroll_position(self.ui.gvSignal_2, self.ui.gvSignal)
 
     @pyqtSlot()
     def on_spectrum_zoomed(self):
@@ -695,6 +764,11 @@ class SignalFrame(QFrame):
             self.ui.gvSignal.scene().draw_noise_area(minimum, maximum - minimum)
 
     @pyqtSlot(int)
+    def on_modulation_type_changed(self, new_index: int):
+        self.ui.cbModulationType.setCurrentIndex(new_index)
+        self.show_hide_2nd_signal()
+
+    @pyqtSlot(int)
     def on_spinbox_selection_start_value_changed(self, value: int):
         if self.spectrogram_is_active:
             self.ui.gvSpectrogram.set_vertical_selection(y=self.ui.gvSpectrogram.sceneRect().height() - value)
@@ -727,12 +801,18 @@ class SignalFrame(QFrame):
         if self.ui.gvLegend.isVisible():
             self.ui.gvLegend.y_sep = y_sep
             self.ui.gvLegend.refresh()
-        if self.ui.gvLegend_2.isVisible():
-            self.ui.gvLegend_2.y_sep = y_sep
-            self.ui.gvLegend_2.refresh()
         self.ui.spinBoxCenterOffset.blockSignals(True)
         self.ui.spinBoxCenterOffset.setValue(-y_sep)
         self.ui.spinBoxCenterOffset.blockSignals(False)
+
+    @pyqtSlot(float)
+    def update_legend_2(self, y_sep):
+        if self.ui.gvLegend_2.isVisible():
+            self.ui.gvLegend_2.y_sep = y_sep
+            self.ui.gvLegend_2.refresh()
+        self.ui.spinBoxCenter2Offset.blockSignals(True)
+        self.ui.spinBoxCenter2Offset.setValue(-y_sep)
+        self.ui.spinBoxCenter2Offset.blockSignals(False)
 
     @pyqtSlot()
     def handle_protocol_sync_changed(self):
@@ -759,42 +839,32 @@ class SignalFrame(QFrame):
 
         self.__set_spectrogram_adjust_widgets_visibility()
 
-        if self.ui.cbSignalView.currentText().lower() == "spectrogram":
+        self.show_hide_2nd_signal()
+
+        if self.ui.cbSignalView.currentIndex() == 2:  # Spectrogram
             self.ui.stackedWidget.setCurrentWidget(self.ui.pageSpectrogram)
-            self.ui.stackedWidget_2.hide()
 
             self.draw_spectrogram(show_full_scene=True)
             self.__set_selected_bandwidth()
         else:
             self.ui.stackedWidget.setCurrentWidget(self.ui.pageSignal)
-            self.ui.stackedWidget_2.hide()
             self.ui.gvSignal.scene_type = self.ui.cbSignalView.currentIndex()
             self.ui.gvSignal.redraw_view(reinitialize=True)
 
-            if self.ui.cbSignalView.currentIndex() == 1:
+            if self.ui.cbSignalView.currentIndex() == 1:  # Demodulated
                 self.ui.gvLegend.y_scene = self.scene_manager.scene.sceneRect().y()
                 self.ui.gvLegend.scene_height = self.scene_manager.scene.sceneRect().height()
                 self.ui.gvLegend.refresh()
+
+                if self.has_2nd_signal():
+                    self.ui.gvLegend_2.y_scene = self.scene_manager_2.scene.sceneRect().y()
+                    self.ui.gvLegend_2.scene_height = self.scene_manager_2.scene.sceneRect().height()
+                    self.ui.gvLegend_2.refresh()
             else:
                 self.ui.gvLegend.hide()
 
             self.ui.gvSignal.auto_fit_view()
             self.ui.gvSignal.refresh_selection_area()
-            self.on_slider_y_scale_value_changed()  # apply YScale to new view
-            self.__set_samples_in_view()
-            self.__set_duration()
-        if self.ui.cbSignalView.currentText().lower() == "demodulated" and self.ui.cbModulationType.currentText().lower() == "oqpsk":
-            self.ui.stackedWidget_2.setCurrentWidget(self.ui.pageSignal_2)
-            self.ui.stackedWidget_2.show()
-            self.ui.gvSignal_2.scene_type = self.ui.cbSignalView.currentIndex()
-            self.ui.gvSignal_2.redraw_view(reinitialize=True)
-
-            self.ui.gvLegend_2.y_scene = self.scene_manager.scene.sceneRect().y()
-            self.ui.gvLegend_2.scene_height = self.scene_manager.scene.sceneRect().height()
-            self.ui.gvLegend_2.refresh()
-
-            self.ui.gvSignal_2.auto_fit_view()
-            self.ui.gvSignal_2.refresh_selection_area()
             self.on_slider_y_scale_value_changed()  # apply YScale to new view
             self.__set_samples_in_view()
             self.__set_duration()
@@ -825,8 +895,16 @@ class SignalFrame(QFrame):
         dialog.show()
         dialog.graphics_view.show_full_scene(reinitialize=True)
 
-    @pyqtSlot(int, int)
-    def update_selection_area(self, start, end):
+    def update_selection_area(self, start, end, other_gv_signal):
+        # also update other selection area, while also avoiding an infinite loop
+        if self.is_updating_selection:
+            return
+        if other_gv_signal is not None:
+            self.is_updating_selection = True
+            other_gv_signal.selection_area.start = start
+            other_gv_signal.selection_area.end = end
+            self.is_updating_selection = False
+
         self.update_number_selected_samples()
         self.ui.spinBoxSelectionStart.blockSignals(True)
         self.ui.spinBoxSelectionStart.setValue(start)
@@ -834,6 +912,17 @@ class SignalFrame(QFrame):
         self.ui.spinBoxSelectionEnd.blockSignals(True)
         self.ui.spinBoxSelectionEnd.setValue(end)
         self.ui.spinBoxSelectionEnd.blockSignals(False)
+
+    @pyqtSlot(int, int)
+    def update_selection_area_1(self, start, end):
+        if self.has_2nd_signal():
+            self.update_selection_area(start, end, self.ui.gvSignal_2)
+        else:
+            self.update_selection_area(start, end, None)
+
+    @pyqtSlot(int, int)
+    def update_selection_area_2(self, start, end):
+        self.update_selection_area(start, end, self.ui.gvSignal)
 
     @pyqtSlot()
     def refresh_protocol(self):
@@ -849,6 +938,11 @@ class SignalFrame(QFrame):
     def set_qad_center(self, th):
         self.ui.spinBoxCenterOffset.setValue(th)
         self.ui.spinBoxCenterOffset.editingFinished.emit()
+
+    @pyqtSlot(float)
+    def set_qad_2_center(self, th):
+        self.ui.spinBoxCenter2Offset.setValue(th)
+        self.ui.spinBoxCenter2Offset.editingFinished.emit()
 
     def set_roi_from_protocol_analysis(self, start_message, start_pos, end_message, end_pos, view_type):
         if not self.proto_analyzer:
@@ -1038,6 +1132,7 @@ class SignalFrame(QFrame):
 
     def refresh_signal(self, draw_full_signal=False):
         self.draw_signal(draw_full_signal)
+        self.draw_2nd_signal(draw_full_signal)
 
         self.__set_samples_in_view()
 
@@ -1049,15 +1144,26 @@ class SignalFrame(QFrame):
     def on_signal_qad_center_changed(self, qad_center):
         self.ui.gvSignal.y_sep = -qad_center
         self.ui.gvLegend.y_sep = -qad_center
-        self.ui.gvSignal_2.y_sep = -qad_center
-        self.ui.gvLegend_2.y_sep = -qad_center
 
         if self.ui.cbSignalView.currentIndex() > 0:
             self.scene_manager.scene.draw_sep_area(-qad_center)
             self.ui.gvLegend.refresh()
-            self.ui.gvLegend_2.refresh()
+
         self.ui.spinBoxCenterOffset.blockSignals(False)
         self.ui.spinBoxCenterOffset.setValue(qad_center)
+
+    @pyqtSlot(float)
+    def on_signal_qad_2_center_changed(self, qad_2_center):
+        if self.has_2nd_signal():
+            self.ui.gvSignal_2.y_sep = -qad_2_center
+            self.ui.gvLegend_2.y_sep = -qad_2_center
+
+            if self.ui.cbSignalView.currentIndex() > 0:
+                self.scene_manager_2.scene.draw_sep_area(-qad_2_center)
+                self.ui.gvLegend_2.refresh()
+
+            self.ui.spinBoxCenter2Offset.blockSignals(False)
+            self.ui.spinBoxCenter2Offset.setValue(qad_2_center)
 
     def on_spinbox_noise_threshold_editing_finished(self):
         if self.signal is not None and self.signal.noise_threshold != self.ui.spinBoxNoiseTreshold.value():
@@ -1140,6 +1246,10 @@ class SignalFrame(QFrame):
 
         self.ui.btnAdvancedModulationSettings.setVisible(self.ui.cbModulationType.currentText() == "ASK")
 
+        if self.has_2nd_signal():
+            # TODO: show/hide center for 2nd signal
+            None
+
     @pyqtSlot()
     def on_signal_data_changed_before_save(self):
         font = self.ui.lineEditSignalName.font()  # type: QFont
@@ -1157,8 +1267,11 @@ class SignalFrame(QFrame):
             self.ui.gvLegend.y_zoom_factor = self.ui.gvSignal.transform().m22()
             self.ui.gvLegend.refresh()
             self.ui.gvLegend.translate(0, 1)  # Resize verschiebt sonst Pfeile
+
+    @pyqtSlot()
+    def on_gv_legend_resized_2(self):
         if self.ui.gvLegend_2.isVisible():
-            self.ui.gvLegend_2.y_zoom_factor = self.ui.gvSignal.transform().m22()
+            self.ui.gvLegend_2.y_zoom_factor = self.ui.gvSignal_2.transform().m22()
             self.ui.gvLegend_2.refresh()
             self.ui.gvLegend_2.translate(0, 1)  # Resize verschiebt sonst Pfeile
 
@@ -1207,6 +1320,16 @@ class SignalFrame(QFrame):
             center_action = ChangeSignalParameter(signal=self.signal, protocol=self.proto_analyzer,
                                                   parameter_name="qad_center",
                                                   parameter_value=self.ui.spinBoxCenterOffset.value())
+            self.undo_stack.push(center_action)
+            self.disable_auto_detection()
+
+    @pyqtSlot()
+    def on_spinbox_center_2_editing_finished(self):
+        if self.signal.qad_2_center != self.ui.spinBoxCenter2Offset.value():
+            self.ui.spinBoxCenter2Offset.blockSignals(True)
+            center_action = ChangeSignalParameter(signal=self.signal, protocol=self.proto_analyzer,
+                                                  parameter_name="qad_2_center",
+                                                  parameter_value=self.ui.spinBoxCenter2Offset.value())
             self.undo_stack.push(center_action)
             self.disable_auto_detection()
 
@@ -1334,3 +1457,43 @@ class SignalFrame(QFrame):
             Errors.generic_error("Failed to export spectrogram", str(e))
         finally:
             QApplication.restoreOverrideCursor()
+
+    def has_2nd_signal(self):
+        is_oqpsk = self.signal.modulation_type > 2
+        is_demodulated = self.ui.cbSignalView.currentIndex() == 1
+        return is_oqpsk and is_demodulated
+
+    def show_hide_2nd_signal(self):
+        should_show_2nd_signal: bool = self.has_2nd_signal()
+        if should_show_2nd_signal and not self.is_showing_2nd_signal:
+            # enable 2nd signal
+            self.is_showing_2nd_signal = True
+
+            # init, if needed
+            if self.scene_manager_2 is None:
+                self.init_2nd_signal()
+
+            # zoom
+            self.ui.gvSignal_2.setTransform(self.ui.gvSignal.transform())
+
+            # scroll offset
+            scroll_value = self.ui.gvSignal.horizontalScrollBar().value()
+            self.ui.gvSignal_2.horizontalScrollBar().setValue(scroll_value)
+
+            # selection
+            self.ui.gvSignal_2.selection_area.start = self.ui.gvSignal.selection_area.start
+            self.ui.gvSignal_2.selection_area.end = self.ui.gvSignal.selection_area.end
+
+            # show widget
+            self.draw_2nd_signal()
+            self.ui.stackedWidget_2.show()
+
+        elif not should_show_2nd_signal and self.is_showing_2nd_signal:
+            # disable 2nd signal
+            self.is_showing_2nd_signal = False
+            self.ui.stackedWidget_2.hide()
+
+    def sync_scroll_position(self, graphic_view, other_graphic_view):
+        scroll_bar: QScrollBar = graphic_view.horizontalScrollBar()
+        scroll_bar_2: QScrollBar = other_graphic_view.horizontalScrollBar()
+        scroll_bar_2.setValue( scroll_bar.value() - scroll_bar.minimum() + scroll_bar_2.minimum() )
