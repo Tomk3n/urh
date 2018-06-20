@@ -25,6 +25,7 @@ class Signal(QObject):
     tolerance_changed = pyqtSignal(int)
     noise_threshold_changed = pyqtSignal()
     qad_center_changed = pyqtSignal(float)
+    qad_2_center_changed = pyqtSignal(float)
     name_changed = pyqtSignal(str)
     sample_rate_changed = pyqtSignal(float)
     modulation_type_changed = pyqtSignal(int)
@@ -43,6 +44,7 @@ class Signal(QObject):
         self._qad = None
         self._qad_2 = None
         self.__qad_center = 0
+        self.__qad_2_center = 0
         self._noise_threshold = 0
         self.__sample_rate = sample_rate
         self.noise_min_plot = 0
@@ -226,6 +228,18 @@ class Signal(QObject):
                 self.protocol_needs_update.emit()
 
     @property
+    def qad_2_center(self):
+        return self.__qad_2_center
+
+    @qad_2_center.setter
+    def qad_2_center(self, value: float):
+        if self.__qad_2_center != value:
+            self.__qad_2_center = value
+            self.qad_2_center_changed.emit(value)
+            if not self.block_protocol_update:
+                self.protocol_needs_update.emit()
+
+    @property
     def pause_threshold(self) -> int:
         return self.__pause_threshold
 
@@ -379,6 +393,10 @@ class Signal(QObject):
             self.__parameter_cache[self.modulation_type_str]["qad_center"] = center
         return center
 
+    def estimate_qad_2_center(self) -> float:
+        # TODO
+        return self.estimate_qad_center()
+
     def create_new(self, start=0, end=0, new_data=None):
         new_signal = Signal("", "New " + self.name)
 
@@ -401,6 +419,12 @@ class Signal(QObject):
         self.__qad_center = self.estimate_qad_center()
         if self.__qad_center != old_qad_center:
             self.qad_center_changed.emit(self.__qad_center)
+            needs_update = True
+
+        old_qad_2_center = self.__qad_2_center
+        self.__qad_2_center = self.estimate_qad_2_center()
+        if self.__qad_2_center != old_qad_2_center:
+            self.qad_2_center_changed.emit(self.__qad_2_center)
             needs_update = True
 
         old_bit_len = self.__bit_len
