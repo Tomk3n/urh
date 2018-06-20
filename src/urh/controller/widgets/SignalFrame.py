@@ -44,6 +44,7 @@ class SignalFrame(QFrame):
     apply_to_all_clicked = pyqtSignal(Signal)
     sort_action_clicked = pyqtSignal()
 
+
     @property
     def proto_view(self):
         return self.ui.txtEdProto.cur_view
@@ -52,6 +53,7 @@ class SignalFrame(QFrame):
         super().__init__(parent)
 
         self.undo_stack = undo_stack
+        self.is_updating_selection = False
 
         self.ui = Ui_SignalFrame()
         self.ui.setupUi(self)
@@ -223,9 +225,8 @@ class SignalFrame(QFrame):
         self.ui.gvSignal_2.horizontalScrollBar().valueChanged.connect(self.on_signal_scrolled_2)
 
         self.ui.gvSpectrogram.zoomed.connect(self.on_spectrum_zoomed)
-        self.ui.gvSignal.sel_area_start_end_changed.connect(self.update_selection_area)
-        # self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area)
-        self.ui.gvSignal_2.selection_area = self.ui.gvSignal.selection_area
+        self.ui.gvSignal.sel_area_start_end_changed.connect(self.update_selection_area_1)
+        self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area_2)
 
         self.ui.gvSpectrogram.sel_area_start_end_changed.connect(self.update_selection_area)
         self.ui.gvSpectrogram.selection_height_changed.connect(self.update_number_selected_samples)
@@ -860,8 +861,15 @@ class SignalFrame(QFrame):
         dialog.show()
         dialog.graphics_view.show_full_scene(reinitialize=True)
 
-    @pyqtSlot(int, int)
-    def update_selection_area(self, start, end):
+    def update_selection_area(self, start, end, other_gv_signal):
+        # also update other selection area, while also avoiding an infinite loop
+        if not self.is_updating_selection:
+            return
+        self.is_updating_selection = True
+        other_gv_signal.selection_area.start = start
+        other_gv_signal.selection_area.end = end
+        self.is_updating_selection = False
+
         self.update_number_selected_samples()
         self.ui.spinBoxSelectionStart.blockSignals(True)
         self.ui.spinBoxSelectionStart.setValue(start)
@@ -869,6 +877,14 @@ class SignalFrame(QFrame):
         self.ui.spinBoxSelectionEnd.blockSignals(True)
         self.ui.spinBoxSelectionEnd.setValue(end)
         self.ui.spinBoxSelectionEnd.blockSignals(False)
+
+    @pyqtSlot(int, int)
+    def update_selection_area_1(self, start, end):
+        self.update_selection_area(start, end, self.ui.gvSignal_2)
+
+    @pyqtSlot(int, int)
+    def update_selection_area_2(self, start, end):
+        self.update_selection_area(start, end, self.ui.gvSignal)
 
     @pyqtSlot()
     def refresh_protocol(self):

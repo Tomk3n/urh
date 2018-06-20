@@ -22,7 +22,7 @@ class SignalSceneManager(SceneManager):
             # Ensure Real plot have same y Axis
             self.plot_data = self.signal.real_plot_data
         else:
-            mod_type = self.scene_type - 1 if self.scene_type < 3 else 0
+            mod_type = self.scene_type - 1 if self.scene_type < 2 else 0
             noise_val = signalFunctions.get_noise_for_mod_type(self.scene_type - 1)
             # Bypass Min/Max calculation
             if noise_val == 0:
@@ -31,7 +31,7 @@ class SignalSceneManager(SceneManager):
             else:
                 self.minimum, self.maximum = 0, self.padding * noise_val
 
-            self.plot_data = self.signal.qad if self.scene_type < 3 else self.signal.qad_2
+            self.plot_data = self.signal.qad if self.scene_type < 2 else self.signal.qad_2
 
         super().init_scene(apply_padding=self.scene_type == 0)
         self.minimum, self.maximum = stored_minimum, stored_maximum
