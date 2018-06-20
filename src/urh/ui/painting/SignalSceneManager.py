@@ -47,8 +47,10 @@ class SignalSceneManager(SceneManager):
 
         if self.scene_type == 0:
             self.scene.draw_noise_area(self.signal.noise_min_plot, self.signal.noise_max_plot - self.signal.noise_min_plot)
-        else:
+        elif self.scene_type < 2:
             self.scene.draw_sep_area(-self.signal.qad_center)
+        else:
+            self.scene.draw_sep_area(-self.signal.qad_2_center)
 
     def scene(self, value):
         self.scene = value

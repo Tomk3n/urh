@@ -525,7 +525,6 @@ class SignalFrame(QFrame):
             return
 
         print("draw_2nd_signal() full_signal={0}".format(full_signal))
-        self.ui.gvSignal_2.y_sep = -self.signal.qad_2_center
         self.ui.gvLegend_2.y_sep = -self.signal.qad_2_center
 
         self.scene_manager_2.init_scene()
@@ -539,11 +538,12 @@ class SignalFrame(QFrame):
 
         # both scene_managers have different sceneRects, so we use the sceneRect of the 1st signal
         # to ensure that scrolling is in sync (otherwise there is a slight offset)
-        legend_2.setSceneRect(0, self.scene_manager.scene.sceneRect().y(), self.ui.gvLegend.width(),
-                              self.scene_manager.scene.sceneRect().height())
-        legend_2.draw_one_zero_arrows(-self.signal.qad_center)
+        legend_2.setSceneRect(0, self.scene_manager_2.scene.sceneRect().y(), self.ui.gvLegend_2.width(),
+                              self.scene_manager_2.scene.sceneRect().height())
+        legend_2.draw_one_zero_arrows(-self.signal.qad_2_center)
         self.ui.gvLegend_2.setScene(legend_2)
-        self.ui.gvLegend_2.refresh()
+
+        self.ui.gvSignal_2.y_sep = -self.signal.qad_2_center
 
     def restore_protocol_selection(self, sel_start, sel_end, start_message, end_message, old_protoview):
         if old_protoview == self.proto_view:
@@ -857,6 +857,11 @@ class SignalFrame(QFrame):
                 self.ui.gvLegend.y_scene = self.scene_manager.scene.sceneRect().y()
                 self.ui.gvLegend.scene_height = self.scene_manager.scene.sceneRect().height()
                 self.ui.gvLegend.refresh()
+
+                if self.has_2nd_signal():
+                    self.ui.gvLegend_2.y_scene = self.scene_manager_2.scene.sceneRect().y()
+                    self.ui.gvLegend_2.scene_height = self.scene_manager_2.scene.sceneRect().height()
+                    self.ui.gvLegend_2.refresh()
             else:
                 self.ui.gvLegend.hide()
 

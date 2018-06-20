@@ -49,7 +49,7 @@ class EpicGraphicView(EditableGraphicView):
             return []
 
     def is_pos_in_separea(self, pos: QPoint):
-        if self.scene_type != 1:
+        if self.scene_type == 0:
             return False
         padding = constants.SEPARATION_PADDING * self.view_rect().height()
         return self.y_sep - padding <= pos.y() <= self.y_sep + padding
