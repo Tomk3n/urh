@@ -516,23 +516,28 @@ class SignalFrame(QFrame):
         self.ui.gvSignal.y_sep = -self.signal.qad_center
 
     def draw_2nd_signal(self, full_signal=False):
-        print("draw_2nd_signal()")
-        if self.has_2nd_signal():
-            self.ui.gvLegend_2.y_sep = self.ui.gvSignal_2.y_sep = -self.signal.qad_center
+        if not self.has_2nd_signal():
+            return
 
-            self.scene_manager_2.init_scene()
-            if full_signal:
-                self.ui.gvSignal_2.show_full_scene()
-            else:
-                self.ui.gvSignal_2.redraw_view()
+        print("draw_2nd_signal() full_signal={0}".format(full_signal))
+        self.ui.gvLegend_2.y_sep = self.ui.gvSignal_2.y_sep = -self.signal.qad_center
 
-            legend_2 = LegendScene()
-            legend_2.setBackgroundBrush(constants.BGCOLOR)
-            legend_2.setSceneRect(0, self.scene_manager_2.scene.sceneRect().y(), self.ui.gvLegend_2.width(),
-                                  self.scene_manager_2.scene.sceneRect().height())
-            legend_2.draw_one_zero_arrows(-self.signal.qad_center)
-            self.ui.gvLegend_2.setScene(legend_2)
-            self.ui.gvLegend_2.refresh()
+        self.scene_manager_2.init_scene()
+        if full_signal:
+            self.ui.gvSignal_2.show_full_scene()
+        else:
+            self.ui.gvSignal_2.redraw_view()
+
+        legend_2 = LegendScene()
+        legend_2.setBackgroundBrush(constants.BGCOLOR)
+
+        # both scene_managers have different sceneRects, so we use the sceneRect of the 1st signal
+        # to ensure that scrolling is in sync (otherwise there is a slight offset)
+        legend_2.setSceneRect(0, self.scene_manager.scene.sceneRect().y(), self.ui.gvLegend.width(),
+                              self.scene_manager.scene.sceneRect().height())
+        legend_2.draw_one_zero_arrows(-self.signal.qad_center)
+        self.ui.gvLegend_2.setScene(legend_2)
+        self.ui.gvLegend_2.refresh()
 
     def restore_protocol_selection(self, sel_start, sel_end, start_message, end_message, old_protoview):
         if old_protoview == self.proto_view:
@@ -693,7 +698,9 @@ class SignalFrame(QFrame):
         self.ui.spinBoxXZoom.blockSignals(False)
 
         if other_graphic_view is not None:
+            self.sync_scroll_position(graphic_view, other_graphic_view)
             other_graphic_view.setTransform(graphic_view.transform())
+
 
     @pyqtSlot()
     def on_signal_zoomed(self):
@@ -710,26 +717,13 @@ class SignalFrame(QFrame):
     def on_signal_scrolled(self):
         # also scroll second signal to stay in sync
         if self.has_2nd_signal():
-            scroll_value = self.ui.gvSignal.horizontalScrollBar().value()
-            scroll_bar = self.ui.gvSignal_2.horizontalScrollBar() # type: QScrollBar
-            scroll_bar.setValue(scroll_value)
+            self.sync_scroll_position(self.ui.gvSignal, self.ui.gvSignal_2)
 
     @pyqtSlot()
     def on_signal_scrolled_2(self):
         # also scroll first signal to stay in sync
-        scroll_bar_1 = self.ui.gvSignal_2.horizontalScrollBar() # type: QScrollBar
-        scroll_value = scroll_bar_1.value()
-        scroll_bar_2 = self.ui.gvSignal.horizontalScrollBar() # type: QScrollBar
-        scroll_bar_2.setValue(scroll_value)
+        self.sync_scroll_position(self.ui.gvSignal_2, self.ui.gvSignal)
 
-        print(str.format("on_signal_scrolled_2() => {0}/{1}-{2}, {3}/{4}-{5}",
-                         scroll_bar_1.value(),
-                         scroll_bar_1.minimum(),
-                         scroll_bar_1.maximum(),
-                         scroll_bar_2.value(),
-                         scroll_bar_2.minimum(),
-                         scroll_bar_2.maximum()
-                         ))
     @pyqtSlot()
     def on_spectrum_zoomed(self):
         self.__handle_graphic_view_zoomed(self.ui.gvSpectrogram)
@@ -1429,7 +1423,6 @@ class SignalFrame(QFrame):
     def has_2nd_signal(self):
         is_oqpsk = self.signal.modulation_type > 2
         is_demodulated = self.ui.cbSignalView.currentIndex() == 1
-        print("has_2nd_signal() = {0}".format((is_oqpsk and is_demodulated)))
         return is_oqpsk and is_demodulated
 
     def show_hide_2nd_signal(self):
@@ -1461,3 +1454,8 @@ class SignalFrame(QFrame):
             # disable 2nd signal
             self.is_showing_2nd_signal = False
             self.ui.stackedWidget_2.hide()
+
+    def sync_scroll_position(self, graphic_view, other_graphic_view):
+        scroll_bar: QScrollBar = graphic_view.horizontalScrollBar()
+        scroll_bar_2: QScrollBar = other_graphic_view.horizontalScrollBar()
+        scroll_bar_2.setValue( scroll_bar.value() - scroll_bar.minimum() + scroll_bar_2.minimum() )
