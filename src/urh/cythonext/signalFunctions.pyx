@@ -44,6 +44,8 @@ cpdef float get_noise_for_mod_type(int mod_type):
         return NOISE_FSK_PSK
     elif mod_type == 3:  # ASK + PSK (QAM)
         return NOISE_ASK * NOISE_FSK_PSK
+    elif mod_type == 4:
+        return NOISE_FSK_PSK
     else:
         return 0
 
@@ -277,7 +279,7 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef float magnitude = 0
 
     cdef float f, t_part, t_all, offset
-    cdef np.ndarray[np.int_t, ndim=1] z = np.empty(ns, dtype=np.float)
+    cdef np.ndarray[np.float_t, ndim=2] z = np.empty(ns, dtype=np.float)
 
     # Atan2 liefert Werte im Bereich von -Pi bis Pi
     # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
@@ -293,12 +295,58 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 
         costa_alpha = calc_costa_alpha(<float>(2 * M_PI / 100))
         costa_beta = calc_costa_beta(<float>(2 * M_PI / 100))
+        costa_demod(samples, result, noise_sqrd, costa_alpha, costa_beta, qam, ns)
 
+    else:
+        for i in prange(1, ns, nogil=True, schedule='static'):
+            c = samples[i]
+            real, imag = c.real, c.imag
+            magnitude = real * real + imag * imag
+            if magnitude <= noise_sqrd:  # |c| <= mag_treshold
+                result[i] = NOISE
+                continue
+
+            if mod_type == 0:  # ASK
+                result[i] = magnitude
+            elif mod_type == 1:  # FSK
+                tmp = samples[i - 1].conjugate() * c
+                result[i] = atan2(tmp.imag, tmp.real)  # Freq
+
+    return np.asarray(result)
+
+cpdef np.ndarray[np.float32_t, ndim=2] afp_2dim_demod(float complex[::1] samples, float noise_mag, int mod_type):
+    if len(samples) <= 2:
+        return np.zeros(len(samples), dtype=np.float32)
+
+    cdef long long i = 0, ns = len(samples)
+    cdef float complex tmp = 0, c = 0
+    cdef float arg = 0
+    cdef float noise_sqrd = 0
+    cdef float NOISE = 0
+
+    cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
+    cdef float costa_freq = 0
+    cdef float costa_phase = 0
+    cdef complex nco_out = 0
+    cdef float phase_error = 0
+    cdef float costa_alpha = 0
+    cdef float costa_beta = 0
+    cdef complex nco_times_sample = 0
+    cdef float magnitude = 0
+
+    cdef float f, t_part, t_all, offset
+    cdef np.ndarray[np.float_t, ndim=2] z = np.empty(ns, dtype=np.float)
+
+    # Atan2 liefert Werte im Bereich von -Pi bis Pi
+    # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
+    noise_sqrd = noise_mag * noise_mag
+    NOISE = get_noise_for_mod_type(mod_type)
+    result[0] = NOISE
+
+    if mod_type > 3: # OQPSK
         if mod_type == 4:
-
             for i in samples:
-                z.app [np.sign(np.real(i)), np.sign(np.imag(i))]
-                result.append(z)
+                result.append([np.sign(np.real(i)), np.sign(np.imag(i))])
 #            phase_error = nco_times_sample.imag * nco_times_sample.real
 #            costa_freq += costa_beta * phase_error
 
@@ -325,25 +373,9 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 #                    rx_qd_data=0
 
 #                result.append([rx_in_data, rx_qd_data])
-        else:
-            costa_demod(samples, result, noise_sqrd, costa_alpha, costa_beta, qam, ns)
-
-    else:
-        for i in prange(1, ns, nogil=True, schedule='static'):
-            c = samples[i]
-            real, imag = c.real, c.imag
-            magnitude = real * real + imag * imag
-            if magnitude <= noise_sqrd:  # |c| <= mag_treshold
-                result[i] = NOISE
-                continue
-
-            if mod_type == 0:  # ASK
-                result[i] = magnitude
-            elif mod_type == 1:  # FSK
-                tmp = samples[i - 1].conjugate() * c
-                result[i] = atan2(tmp.imag, tmp.real)  # Freq
 
     return np.asarray(result)
+
 
 cpdef unsigned long long find_signal_start(float[::1] demod_samples, int mod_type):
 
