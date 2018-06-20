@@ -12,7 +12,6 @@ class SignalSceneManager(SceneManager):
         self.scene_type = scene_type  # 0 = Analog Signal, 1 = QuadDemodView, 2 = QuadDemodView 2nd signal (for (O-)QPSK)
 
     def show_scene_section(self, x1: float, x2: float, subpath_ranges=None, colors=None):
-        print("SignalSceneManager::show_scene_section() scene={0}".format(self.scene_type))
         if self.scene_type == 0:
             self.plot_data = self.signal.real_plot_data
         elif self.scene_type < 2:
@@ -24,7 +23,6 @@ class SignalSceneManager(SceneManager):
     def init_scene(self):
         stored_minimum, stored_maximum = self.minimum, self.maximum
 
-        print("SignalSceneManager::init_scene() scene={0}".format(self.scene_type))
         if self.scene_type == 0:
             # Ensure Real plot have same y Axis
             self.plot_data = self.signal.real_plot_data

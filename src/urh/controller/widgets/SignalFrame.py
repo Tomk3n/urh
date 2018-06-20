@@ -500,7 +500,6 @@ class SignalFrame(QFrame):
                 QMessageBox.critical(self, self.tr("Error exporting demodulated data"), e.args[0])
 
     def draw_signal(self, full_signal=False):
-        print("draw_signal()")
         gv_legend = self.ui.gvLegend
         gv_legend.y_sep = -self.signal.qad_center
 
@@ -524,7 +523,6 @@ class SignalFrame(QFrame):
         if not self.has_2nd_signal():
             return
 
-        print("draw_2nd_signal() full_signal={0}".format(full_signal))
         self.ui.gvLegend_2.y_sep = -self.signal.qad_2_center
 
         self.scene_manager_2.init_scene()
@@ -924,7 +922,6 @@ class SignalFrame(QFrame):
 
     @pyqtSlot(int, int)
     def update_selection_area_2(self, start, end):
-        print("update_selection_area_2()")
         self.update_selection_area(start, end, self.ui.gvSignal)
 
     @pyqtSlot()
