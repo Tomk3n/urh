@@ -41,6 +41,7 @@ class Signal(QObject):
         self.__pause_threshold = 8
         self.__message_length_divisor = 1
         self._qad = None
+        self._qad_2 = None
         self.__qad_center = 0
         self._noise_threshold = 0
         self.__sample_rate = sample_rate
@@ -167,7 +168,7 @@ class Signal(QObject):
     @modulation_type.setter
     def modulation_type(self, value: str):
         """
-        0 - "ASK", 1 - "FSK", 2 - "PSK", 3 - "APSK (QAM)"
+        0 - "ASK", 1 - "FSK", 2 - "PSK", 3 - "APSK (QAM)", 4 - "O-QPSK"
 
         :param value:
         :return:
@@ -175,6 +176,7 @@ class Signal(QObject):
         if self.__modulation_type != value:
             self.__modulation_type = value
             self._qad = None
+            self._qad_2 = None
 
             if self.auto_detect_on_modulation_changed:
                 self.auto_detect(emit_update=False)
@@ -267,6 +269,7 @@ class Signal(QObject):
     def noise_threshold(self, value):
         if value != self.noise_threshold:
             self._qad = None
+            self._qad_2 = None
             self.clear_parameter_cache()
             self._noise_threshold = value
             self.noise_min_plot = -value
@@ -281,6 +284,14 @@ class Signal(QObject):
             self._qad = self.quad_demod()
 
         return self._qad
+
+    @property
+    def qad_2(self):
+        if self._qad_2 is None:
+            # TODO
+            self._qad_2 = np.zeros(len(self.data), dtype=np.float32)
+
+        return self._qad_2
 
     @property
     def data(self) -> np.ndarray:
