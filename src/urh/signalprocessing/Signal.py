@@ -302,7 +302,6 @@ class Signal(QObject):
     @property
     def qad_2(self):
         if self._qad_2 is None:
-            # self._qad_2 = np.zeros(len(self.data), dtype=np.float32)
             self.quad_demod()
 
         return self._qad_2
@@ -360,14 +359,15 @@ class Signal(QObject):
         return signal_functions.find_signal_end(self.qad, self.modulation_type)
 
     def quad_demod(self):
-        logger.debug("Modulation type {}".format(self.modulation_type))
-        if self.modulation_type < 4: # OQPSK
-            self._qad = signal_functions.afp_demod(self.data, self.noise_threshold, self.modulation_type)
-            np.savetxt("testfile.txt", self._qad)
-        else:
-            self._qad, self._qad_2 = signal_functions.afp_2dim_demod(self.data, self.noise_threshold, self.modulation_type)
-            np.savetxt("testfile_q.txt", self._qad)
-            np.savetxt("testfile_i.txt", self._qad_2)
+        # logger.debug("Modulation type {}".format(self.modulation_type))
+        self._qad = signal_functions.afp_demod(self.data, self.noise_threshold, self.modulation_type)  # type: np.ndarray
+
+        if self.modulation_type == 4:  # OQPSK
+            self._qad, self._qad_2 = np.split(self._qad, 2)
+        #     np.savetxt("testfile_q.txt", self._qad)
+        #     np.savetxt("testfile_i.txt", self._qad_2)
+        # else:
+        #     np.savetxt("testfile.txt", self._qad)
 
 
     def calc_noise_threshold(self, noise_start: int, noise_end: int):

@@ -268,7 +268,11 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef float real = 0
     cdef float imag = 0
 
-    cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
+    cdef long result_size = ns
+    if mod_type == 4:  # for OQPSK we concatenate two signals, thus the result needs to be twice as large
+        result_size *= 2
+
+    cdef float[::1] result = np.zeros(result_size, dtype=np.float32, order="C")
     cdef float costa_freq = 0
     cdef float costa_phase = 0
     cdef complex nco_out = 0
@@ -279,7 +283,6 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef float magnitude = 0
 
     cdef float f, t_part, t_all, offset
-    cdef np.ndarray[np.float_t, ndim=2] z = np.empty(ns, dtype=np.float)
 
     # Atan2 liefert Werte im Bereich von -Pi bis Pi
     # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
@@ -290,12 +293,20 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef bool qam = False
 
     if mod_type > 1: # PSK, OQPSK or QAM
-        if mod_type == 3:
-            qam = True
+        if mod_type == 4:  # OQPSK
+            for i in prange(1, ns, nogil=True, schedule='static'):
+                c = samples[i]
+                real, imag = c.real, c.imag
 
-        costa_alpha = calc_costa_alpha(<float>(2 * M_PI / 100))
-        costa_beta = calc_costa_beta(<float>(2 * M_PI / 100))
-        costa_demod(samples, result, noise_sqrd, costa_alpha, costa_beta, qam, ns)
+                result[i] = real # np.real(samples[i])
+                result[ns + i] = imag # np.imag(samples[i]))]
+
+        else:
+            if mod_type == 3:
+                qam = True
+            costa_alpha = calc_costa_alpha(<float>(2 * M_PI / 100))
+            costa_beta = calc_costa_beta(<float>(2 * M_PI / 100))
+            costa_demod(samples, result, noise_sqrd, costa_alpha, costa_beta, qam, ns)
 
     else:
         for i in prange(1, ns, nogil=True, schedule='static'):
@@ -314,67 +325,6 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 
     return np.asarray(result)
 
-cpdef np.ndarray[np.float32_t, ndim=2] afp_2dim_demod(float complex[::1] samples, float noise_mag, int mod_type):
-    if len(samples) <= 2:
-        return np.zeros(len(samples), dtype=np.float32)
-
-    cdef long long i = 0, ns = len(samples)
-    cdef float complex tmp = 0, c = 0
-    cdef float arg = 0
-    cdef float noise_sqrd = 0
-    cdef float NOISE = 0
-
-    cdef float[::1] result = np.zeros(ns, dtype=np.float32, order="C")
-    cdef float costa_freq = 0
-    cdef float costa_phase = 0
-    cdef complex nco_out = 0
-    cdef float phase_error = 0
-    cdef float costa_alpha = 0
-    cdef float costa_beta = 0
-    cdef complex nco_times_sample = 0
-    cdef float magnitude = 0
-
-    cdef float f, t_part, t_all, offset
-    cdef np.ndarray[np.float_t, ndim=2] z = np.empty(ns, dtype=np.float)
-
-    # Atan2 liefert Werte im Bereich von -Pi bis Pi
-    # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
-    noise_sqrd = noise_mag * noise_mag
-    NOISE = get_noise_for_mod_type(mod_type)
-    result[0] = NOISE
-
-    if mod_type > 3: # OQPSK
-        if mod_type == 4:
-            for i in samples:
-                result.append([np.sign(np.real(i)), np.sign(np.imag(i))])
-#            phase_error = nco_times_sample.imag * nco_times_sample.real
-#            costa_freq += costa_beta * phase_error
-
-#            f = costa_freq
-#            t_all = 1/f
-
-#            for i in ns:
-#                t_part = i/t_all
-
-#                z_in = [i * cos(2*M_PI*f*t_part) in samples]
-
-#                z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
-#                if z_in_intg > 0:
-#                    rx_in_data = 1
-#                else:
-#                    rx_in_data = 0
-
-#                z_qd = [i * sin(2*M_PI*f*t_part) in samples]
-
-#                z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
-#                if z_qd_intg>0:
-#                    rx_qd_data=1
-#                else:
-#                    rx_qd_data=0
-
-#                result.append([rx_in_data, rx_qd_data])
-
-    return np.asarray(result)
 
 
 cpdef unsigned long long find_signal_start(float[::1] demod_samples, int mod_type):
