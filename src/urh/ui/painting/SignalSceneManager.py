@@ -6,10 +6,10 @@ from urh.ui.painting.SceneManager import SceneManager
 
 
 class SignalSceneManager(SceneManager):
-    def __init__(self, signal: Signal, parent):
+    def __init__(self, signal: Signal, parent, scene_type=0):
         super().__init__(parent)
         self.signal = signal
-        self.scene_type = 0  # 0 = Analog Signal, 1 = QuadDemodView
+        self.scene_type = scene_type  # 0 = Analog Signal, 1 = QuadDemodView, 2 = QuadDemodView 2nd signal (for (O-)QPSK)
 
     def show_scene_section(self, x1: float, x2: float, subpath_ranges=None, colors=None):
         self.plot_data = self.signal.real_plot_data if self.scene_type == 0 else self.signal.qad
@@ -22,6 +22,7 @@ class SignalSceneManager(SceneManager):
             # Ensure Real plot have same y Axis
             self.plot_data = self.signal.real_plot_data
         else:
+            mod_type = self.scene_type - 1 if self.scene_type < 3 else 0
             noise_val = signalFunctions.get_noise_for_mod_type(self.scene_type - 1)
             # Bypass Min/Max calculation
             if noise_val == 0:
@@ -30,7 +31,7 @@ class SignalSceneManager(SceneManager):
             else:
                 self.minimum, self.maximum = 0, self.padding * noise_val
 
-            self.plot_data = self.signal.qad
+            self.plot_data = self.signal.qad if self.scene_type < 3 else self.signal.qad_2
 
         super().init_scene(apply_padding=self.scene_type == 0)
         self.minimum, self.maximum = stored_minimum, stored_maximum
@@ -41,6 +42,9 @@ class SignalSceneManager(SceneManager):
             self.scene.draw_noise_area(self.signal.noise_min_plot, self.signal.noise_max_plot - self.signal.noise_min_plot)
         else:
             self.scene.draw_sep_area(-self.signal.qad_center)
+
+    def scene(self, value):
+        self.scene = value
 
     def eliminate(self):
         super().eliminate()

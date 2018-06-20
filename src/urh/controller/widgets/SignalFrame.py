@@ -130,8 +130,11 @@ class SignalFrame(QFrame):
             self.scene_manager = SignalSceneManager(self.signal, self)
             self.ui.gvSignal.scene_manager = self.scene_manager
             self.ui.gvSignal.setScene(self.scene_manager.scene)
-            self.ui.gvSignal_2.scene_manager = self.scene_manager
-            self.ui.gvSignal_2.setScene(self.scene_manager.scene)
+
+            self.scene_manager_2 = SignalSceneManager(self.signal, self, 2)
+            # self.scene_manager_2.scene = self.scene_manager.scene
+            self.ui.gvSignal_2.scene_manager = self.scene_manager_2
+            self.ui.gvSignal_2.setScene(self.scene_manager_2.scene)
 
             self.jump_sync = True
             self.on_btn_show_hide_start_end_clicked()
@@ -214,11 +217,15 @@ class SignalFrame(QFrame):
         self.ui.gvSignal.zoomed.connect(self.on_signal_zoomed)
 
         self.ui.gvSignal_2.create_clicked.connect(self.create_new_signal)
-        self.ui.gvSignal_2.zoomed.connect(self.on_signal_zoomed)
+        self.ui.gvSignal_2.zoomed.connect(self.on_signal_zoomed_2)
+
+        self.ui.gvSignal.horizontalScrollBar().valueChanged.connect(self.on_signal_scrolled)
+        self.ui.gvSignal_2.horizontalScrollBar().valueChanged.connect(self.on_signal_scrolled_2)
 
         self.ui.gvSpectrogram.zoomed.connect(self.on_spectrum_zoomed)
         self.ui.gvSignal.sel_area_start_end_changed.connect(self.update_selection_area)
-        self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area)
+        # self.ui.gvSignal_2.sel_area_start_end_changed.connect(self.update_selection_area)
+        self.ui.gvSignal_2.selection_area = self.ui.gvSignal.selection_area
 
         self.ui.gvSpectrogram.sel_area_start_end_changed.connect(self.update_selection_area)
         self.ui.gvSpectrogram.selection_height_changed.connect(self.update_number_selected_samples)
@@ -489,6 +496,17 @@ class SignalFrame(QFrame):
         legend.draw_one_zero_arrows(-self.signal.qad_center)
         gv_legend.setScene(legend)
 
+        self.ui.gvSignal.y_sep = -self.signal.qad_center
+
+        gv_legend_2 = self.ui.gvLegend_2
+        gv_legend_2.y_sep = -self.signal.qad_center
+
+        self.scene_manager_2.init_scene()
+        if full_signal:
+            self.ui.gvSignal_2.show_full_scene()
+        else:
+            self.ui.gvSignal_2.redraw_view()
+
         legend_2 = LegendScene()
         legend_2.setBackgroundBrush(constants.BGCOLOR)
         legend_2.setSceneRect(0, self.scene_manager.scene.sceneRect().y(), gv_legend_2.width(),
@@ -649,15 +667,32 @@ class SignalFrame(QFrame):
         self.setParent(None)
         self.deleteLater()
 
-    def __handle_graphic_view_zoomed(self, graphic_view):
+    def __handle_graphic_view_zoomed(self, graphic_view, other_graphic_view=None):
         self.ui.lSamplesInView.setText("{0:n}".format(int(graphic_view.view_rect().width())))
         self.ui.spinBoxXZoom.blockSignals(True)
         self.ui.spinBoxXZoom.setValue(int(graphic_view.sceneRect().width() / graphic_view.view_rect().width() * 100))
         self.ui.spinBoxXZoom.blockSignals(False)
 
+        if other_graphic_view is not None:
+            other_graphic_view.setTransform(graphic_view.transform())
+
     @pyqtSlot()
     def on_signal_zoomed(self):
-        self.__handle_graphic_view_zoomed(self.ui.gvSignal)
+        self.__handle_graphic_view_zoomed(self.ui.gvSignal, self.ui.gvSignal_2)
+
+    @pyqtSlot()
+    def on_signal_zoomed_2(self):
+        self.__handle_graphic_view_zoomed(self.ui.gvSignal_2, self.ui.gvSignal)
+
+    @pyqtSlot()
+    def on_signal_scrolled(self):
+        # also scroll second signal to stay in sync
+        self.ui.gvSignal_2.horizontalScrollBar().setValue(self.ui.gvSignal.horizontalScrollBar().value())
+
+    @pyqtSlot()
+    def on_signal_scrolled_2(self):
+        # also scroll second signal to stay in sync
+        self.ui.gvSignal.horizontalScrollBar().setValue(self.ui.gvSignal_2.horizontalScrollBar().value())
 
     @pyqtSlot()
     def on_spectrum_zoomed(self):
@@ -1054,6 +1089,7 @@ class SignalFrame(QFrame):
 
         if self.ui.cbSignalView.currentIndex() > 0:
             self.scene_manager.scene.draw_sep_area(-qad_center)
+            self.scene_manager_2.scene.draw_sep_area(-qad_center)
             self.ui.gvLegend.refresh()
             self.ui.gvLegend_2.refresh()
         self.ui.spinBoxCenterOffset.blockSignals(False)
@@ -1158,7 +1194,7 @@ class SignalFrame(QFrame):
             self.ui.gvLegend.refresh()
             self.ui.gvLegend.translate(0, 1)  # Resize verschiebt sonst Pfeile
         if self.ui.gvLegend_2.isVisible():
-            self.ui.gvLegend_2.y_zoom_factor = self.ui.gvSignal.transform().m22()
+            self.ui.gvLegend_2.y_zoom_factor = self.ui.gvSignal_2.transform().m22()
             self.ui.gvLegend_2.refresh()
             self.ui.gvLegend_2.translate(0, 1)  # Resize verschiebt sonst Pfeile
 
