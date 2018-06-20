@@ -9,7 +9,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SignalFrame(object):
     def setupUi(self, SignalFrame):
         SignalFrame.setObjectName("SignalFrame")
-        SignalFrame.resize(1057, 510)
+        SignalFrame.resize(1057, 545)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -615,7 +615,7 @@ class Ui_SignalFrame(object):
         self.lSignalNr.setText(_translate("SignalFrame", "1:"))
         self.btnInfo.setText(_translate("SignalFrame", "..."))
         self.btnReplay.setToolTip(_translate("SignalFrame", "Replay signal"))
-        self.cbModulationType.setToolTip(_translate("SignalFrame", "<html><head/><body><p>Choose signals modulation:</p><ul><li>Amplitude Shift Keying (ASK)</li><li>Frequency Shift Keying (FSK)</li><li>Phase Shift Keying (PSK)</li><li>Offset Quad Phase Shift Keying (OQPSK)</li></ul></body></html>"))
+        self.cbModulationType.setToolTip(_translate("SignalFrame", "<html><head/><body><p>Choose signals modulation:</p><ul><li>Amplitude Shift Keying (ASK)</li><li>Frequency Shift Keying (FSK)</li><li>Phase Shift Keying (PSK)</li><li>Quad Amplitude Modulation (QAM)</li><li>Offset Quad Phase Shift Keying (OQPSK)</li></ul></body></html>"))
         self.cbModulationType.setItemText(0, _translate("SignalFrame", "ASK"))
         self.cbModulationType.setItemText(1, _translate("SignalFrame", "FSK"))
         self.cbModulationType.setItemText(2, _translate("SignalFrame", "PSK"))

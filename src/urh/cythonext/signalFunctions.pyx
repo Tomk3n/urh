@@ -14,6 +14,8 @@ from cython.parallel import prange
 # noinspection PyUnresolvedReferences
 from libc.math cimport atan2, sqrt, M_PI, sin, cos
 
+from urh.util import Logger
+
 cdef:
     float complex imag_unit = 1j
 
@@ -275,6 +277,7 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef float magnitude = 0
 
     cdef float f, t_part, t_all, offset
+    cdef np.ndarray[np.int_t, ndim=1] z = np.empty(ns, dtype=np.float)
 
     # Atan2 liefert Werte im Bereich von -Pi bis Pi
     # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
@@ -292,32 +295,36 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
         costa_beta = calc_costa_beta(<float>(2 * M_PI / 100))
 
         if mod_type == 4:
-            phase_error = nco_times_sample.imag * nco_times_sample.real
-            costa_freq += costa_beta * phase_error
 
-            f = costa_freq
-            t_all = 1/f
+            for i in samples:
+                z.app [np.sign(np.real(i)), np.sign(np.imag(i))]
+                result.append(z)
+#            phase_error = nco_times_sample.imag * nco_times_sample.real
+#            costa_freq += costa_beta * phase_error
 
-            for i in ns:
-                t_part = 1/t_all
+#            f = costa_freq
+#            t_all = 1/f
 
-                z_in = [i * cos(2*M_PI*f*t_part) in samples]
+#            for i in ns:
+#                t_part = i/t_all
 
-                z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
-                if z_in_intg > 0:
-                    rx_in_data = 1
-                else:
-                    rx_in_data = 0
+#                z_in = [i * cos(2*M_PI*f*t_part) in samples]
 
-                z_qd = [i * sin(2*M_PI*f*t_part) in samples]
+#                z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
+#                if z_in_intg > 0:
+#                    rx_in_data = 1
+#                else:
+#                    rx_in_data = 0
 
-                z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
-                if z_qd_intg>0:
-                    rx_qd_data=1
-                else:
-                    rx_qd_data=0
+#                z_qd = [i * sin(2*M_PI*f*t_part) in samples]
 
-                result.append([rx_in_data, rx_qd_data])
+#                z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
+#                if z_qd_intg>0:
+#                    rx_qd_data=1
+#                else:
+#                    rx_qd_data=0
+
+#                result.append([rx_in_data, rx_qd_data])
         else:
             costa_demod(samples, result, noise_sqrd, costa_alpha, costa_beta, qam, ns)
 

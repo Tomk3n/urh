@@ -335,7 +335,11 @@ class Signal(QObject):
         return signal_functions.find_signal_end(self.qad, self.modulation_type)
 
     def quad_demod(self):
-        return signal_functions.afp_demod(self.data, self.noise_threshold, self.modulation_type)
+        logger.debug("Modulation type {}".format(self.modulation_type))
+        debugtext = signal_functions.afp_demod(self.data, self.noise_threshold, self.modulation_type)
+        np.savetxt("/home/betaros/testfile.txt", debugtext)
+        #np.savetxt("/home/betaros/testfile.txt", self.data)
+        return debugtext
 
     def calc_noise_threshold(self, noise_start: int, noise_end: int):
         num_digits = 4
