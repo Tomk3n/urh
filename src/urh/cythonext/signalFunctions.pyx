@@ -298,27 +298,30 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
             offset = t_all/2
             for i in range(1, ns):
                 c = samples[i]
-                # real, imag = c.real, c.imag
+                real, imag = c.real, c.imag
+#                magnitude = real * real + imag * imag
 
-                t_part = c/sample_rate
-                z_in = c * cos(2*M_PI*freq*t_part)
+#                t_part = magnitude/sample_rate
+#                z_in = magnitude * cos(2*M_PI*freq*t_part)
 
-                z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
-                if z_in_intg > 0:
-                    rx_in_data = 1
-                else:
-                    rx_in_data = 0
+#                z_in_intg = (np.trapz(samples, z_in))*(2/t_all) + offset
+#                if z_in_intg > 0:
+#                    rx_in_data = 1
+#                else:
+#                    rx_in_data = 0
 
-                z_qd = c * sin(2*M_PI*freq*t_part)
+#                z_qd = magnitude * sin(2*M_PI*freq*t_part)
 
-                z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
-                if z_qd_intg>0:
-                    rx_qd_data=1
-                else:
-                    rx_qd_data=0
+#                z_qd_intg = (np.trapz(samples, z_qd))*(2/t_all)
+#                if z_qd_intg>0:
+#                    rx_qd_data=1
+#                else:
+#                    rx_qd_data=0
 
-                result[i] = rx_qd_data # np.real(samples[i])
-                result[ns + i] = rx_in_data # np.imag(samples[i]))]
+#                result[i] = rx_qd_data # np.real(samples[i])
+#                result[ns + i] = rx_in_data # np.imag(samples[i]))]
+                result[i] = real # np.real(samples[i])
+                result[ns + i] = imag # np.imag(samples[i]))]
 
         else:
             if mod_type == 3:
