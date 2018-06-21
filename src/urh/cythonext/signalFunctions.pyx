@@ -254,7 +254,7 @@ cdef void costa_demod(float complex[::1] samples, float[::1] result, float noise
         else:
             result[i] = nco_times_sample.real
 
-cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, float noise_mag, int mod_type):
+cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, float noise_mag, int mod_type, float freq=0.0, float sample_rate=0.0):
     if len(samples) <= 2:
         return np.zeros(len(samples), dtype=np.float32)
 
@@ -282,7 +282,7 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
     cdef complex nco_times_sample = 0
     cdef float magnitude = 0
 
-    cdef float f, t_part, t_all, offset
+    cdef float t_part, t_all, offset
 
     # Atan2 liefert Werte im Bereich von -Pi bis Pi
     # Wir nutzen die Magic Constant NOISE_FSK_PSK um Rauschen abzuschneiden
@@ -294,12 +294,31 @@ cpdef np.ndarray[np.float32_t, ndim=1] afp_demod(float complex[::1] samples, flo
 
     if mod_type > 1: # PSK, OQPSK or QAM
         if mod_type == 4:  # OQPSK
-            for i in prange(1, ns, nogil=True, schedule='static'):
+            t_all = 1/freq
+            offset = t_all/2
+            for i in range(1, ns):
                 c = samples[i]
-                real, imag = c.real, c.imag
+                # real, imag = c.real, c.imag
 
-                result[i] = real # np.real(samples[i])
-                result[ns + i] = imag # np.imag(samples[i]))]
+                t_part = c/sample_rate
+                z_in = c * cos(2*M_PI*freq*t_part)
+
+                z_in_intg = (np.trapz(t_part, z_in))*(2/t_all) + offset
+                if z_in_intg > 0:
+                    rx_in_data = 1
+                else:
+                    rx_in_data = 0
+
+                z_qd = c * sin(2*M_PI*freq*t_part)
+
+                z_qd_intg = (np.trapz(t_part, z_qd))*(2/t_all)
+                if z_qd_intg>0:
+                    rx_qd_data=1
+                else:
+                    rx_qd_data=0
+
+                result[i] = rx_qd_data # np.real(samples[i])
+                result[ns + i] = rx_in_data # np.imag(samples[i]))]
 
         else:
             if mod_type == 3:

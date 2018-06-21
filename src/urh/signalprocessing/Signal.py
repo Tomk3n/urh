@@ -360,11 +360,12 @@ class Signal(QObject):
 
     def quad_demod(self):
         # logger.debug("Modulation type {}".format(self.modulation_type))
-        self._qad = signal_functions.afp_demod(self.data, self.noise_threshold, self.modulation_type)  # type: np.ndarray
+        f = self.estimate_frequency(0, len(self.data), self.sample_rate)
+        self._qad = signal_functions.afp_demod(self.data, self.noise_threshold, self.modulation_type, f, self.sample_rate)  # type: np.ndarray
 
         if self.modulation_type == 4:  # OQPSK
             self._qad, self._qad_2 = np.split(self._qad, 2)
-        #     np.savetxt("testfile_q.txt", self._qad)
+            np.savetxt("testfile.txt", self._qad)
         #     np.savetxt("testfile_i.txt", self._qad_2)
         # else:
         #     np.savetxt("testfile.txt", self._qad)
